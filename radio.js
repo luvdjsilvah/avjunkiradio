@@ -1163,17 +1163,16 @@ document.addEventListener("DOMContentLoaded", () => {
      TEST PLAYLIST / MUSIC VIDEO
   ========================================================= */
 
-  const playlist = [
-    {
-      title: "Son of a Preacher Man",
-      artist: "Searvaxter Charles Gardner Jr.",
-      artwork: "assets/son-of-a-preacher-man-cover.png",
-      src: "assets/son-of-a-preacher-man.wav",
-      video: "assets/son-of-a-preacher-man.mp4",
-      preset: "music"
-    }
-  ];
-
+const playlist = [
+  {
+    title: "Son of a Preacher Man",
+    artist: "Searvaxter Charles Gardner Jr.",
+    artwork: "assets/images/son-of-a-preacher-man-cover.png",
+    src: "assets/audio/son-of-a-preacher-man.mp3",
+    video: "",
+    preset: "music"
+  }
+];
   let currentTrackIndex = 0;
 
 
