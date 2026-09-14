@@ -721,7 +721,7 @@ button {
   align-items: center;
   justify-content: center;
   gap: 7%;
-   transform: rotate(-2deg);
+  transform: rotate(-2deg);
   pointer-events: auto;
 }
 
@@ -743,7 +743,10 @@ button {
     inset 0 1px 2px rgba(255,255,255,.14);
   cursor: pointer;
   line-height: 1;
-  transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
+  transition:
+    transform .15s ease,
+    background .15s ease,
+    box-shadow .15s ease;
 }
 
 #previous-track,
@@ -821,14 +824,12 @@ button {
   overflow: hidden;
 }
 
-
 #mainstream-label,
 #stream-state,
 #mainstream-rule,
 #stream-light {
   position: absolute;
 }
-
 
 #mainstream-label {
   left: 10%;
@@ -848,7 +849,6 @@ button {
     0 0 4px rgba(90, 195, 235, 0.55);
 }
 
-
 #mainstream-rule {
   left: 11%;
   top: 47%;
@@ -860,7 +860,6 @@ button {
   box-shadow:
     0 0 4px rgba(70, 180, 225, 0.25);
 }
-
 
 #stream-state {
   left: 10%;
@@ -879,7 +878,6 @@ button {
   text-shadow:
     0 0 5px rgba(70, 190, 235, 0.58);
 }
-
 
 #stream-light {
   right: 12%;
@@ -964,8 +962,6 @@ button {
 
 /* =========================================================
    VOLUME VU + PNG ROTARY KNOB
-   VU stays in place.
-   PNG knob sits to the right and remains clearly smaller.
 ========================================================= */
 
 #volume-control {
@@ -984,7 +980,6 @@ button {
   background: transparent;
   overflow: visible;
 
-  /* JS will update these later */
   --volume-angle: -38deg;
   --volume-knob-angle: -5deg;
 }
@@ -1063,18 +1058,15 @@ button {
 
 /* =========================================================
    VOLUME KNOB
-   Existing range input becomes the clickable PNG knob.
 ========================================================= */
 
 #volume-slider {
   position: absolute;
 
-  /* right side of VU */
-  left: 100.0%;
+  left: 100%;
   top: 24%;
 
-  /* intentionally smaller than the meter */
-  width: 44.0%;
+  width: 44%;
   height: 72.5%;
 
   margin: 0;
@@ -1083,7 +1075,7 @@ button {
   z-index: 7;
 
   border: 0;
-  border-radius: 0%;
+  border-radius: 0;
 
   appearance: none;
   -webkit-appearance: none;
@@ -1095,15 +1087,15 @@ button {
   background-color: transparent;
 
   background-image:
-    url("assets/images/volum-knob-gold.png");
+    url("assets/volum-knob-gold.png");
 
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
 
- transform:
-  translateY(-18%)
-  rotate(var(--volume-knob-angle));
+  transform:
+    translateY(-18%)
+    rotate(var(--volume-knob-angle));
 
   transform-origin: 50% 50%;
 
@@ -1114,13 +1106,14 @@ button {
     transform 90ms ease-out,
     filter .15s ease;
 }
+
 #volume-knob-center {
   position: absolute;
 
-  left: 100.0%;
+  left: 100%;
   top: 24%;
 
-  width: 44.0%;
+  width: 44%;
   height: 72.5%;
 
   object-fit: contain;
@@ -1143,21 +1136,18 @@ button {
     drop-shadow(0 3px 4px rgba(0,0,0,.55));
 }
 
-/* REMOVE OLD HORIZONTAL SLIDER TRACK */
+
+/* =========================================================
+   REMOVE OLD HORIZONTAL SLIDER APPEARANCE
+========================================================= */
 
 #volume-slider::-webkit-slider-runnable-track {
   width: 100%;
   height: 100%;
-
   border: 0;
-
   background: transparent;
-
   box-shadow: none;
 }
-
-
-/* REMOVE OLD SLIDER THUMB */
 
 #volume-slider::-webkit-slider-thumb {
   appearance: none;
@@ -1177,17 +1167,11 @@ button {
   box-shadow: none;
 }
 
-
-/* FIREFOX */
-
 #volume-slider::-moz-range-track {
   width: 100%;
   height: 100%;
-
   border: 0;
-
   background: transparent;
-
   box-shadow: none;
 }
 
@@ -1205,7 +1189,9 @@ button {
 }
 
 
-/* SUBTLE HARDWARE RESPONSE */
+/* =========================================================
+   VOLUME HARDWARE RESPONSE
+========================================================= */
 
 #volume-slider:hover {
   filter:
@@ -1223,6 +1209,7 @@ button {
   outline: 1px solid rgba(225,172,76,.72);
   outline-offset: 3px;
 }
+
 
 /* =========================================================
    AUDIO
@@ -1247,6 +1234,714 @@ button {
   font-size: clamp(8px, .7vw, 13px);
 
   pointer-events: none;
+}
+
+
+/* =========================================================
+   LEFT FASCIA INFORMATION DISPLAY
+========================================================= */
+
+#left-info-display {
+  position: absolute;
+
+  left: -0.6%;
+  top: 75.5%;
+
+  width: 20%;
+  height: 18%;
+
+  background: #05080a;
+
+  -webkit-mask:
+    url("assets/front-left-fascia-mask.png")
+    center / contain no-repeat;
+
+  mask:
+    url("assets/front-left-fascia-mask.png")
+    center / contain no-repeat;
+
+  z-index: 50;
+}
+
+#left-info-display::before {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(12, 22, 28, .96) 0%,
+      rgba(4, 10, 14, .98) 100%
+    );
+
+  -webkit-mask:
+    url("assets/front-left-fascia-mask.png")
+    center / contain no-repeat;
+
+  mask:
+    url("assets/front-left-fascia-mask.png")
+    center / contain no-repeat;
+
+  transform:
+    scaleX(.92)
+    scaleY(.96);
+
+  transform-origin: center;
+}
+
+#left-info-display::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  background:
+    linear-gradient(
+      168deg,
+      rgba(255,255,255,0) 0%,
+      rgba(255,255,255,.16) 18%,
+      rgba(255,255,255,.05) 24%,
+      rgba(255,255,255,0) 34%
+    ),
+    linear-gradient(
+      165deg,
+      rgba(255,255,255,.10) 0%,
+      rgba(255,255,255,.035) 22%,
+      rgba(255,255,255,0) 48%
+    );
+
+  pointer-events: none;
+
+  z-index: 2;
+}
+
+
+/* =========================================================
+   LEFT FASCIA LOGO
+========================================================= */
+
+#left-info-logo {
+  position: absolute;
+
+  left: 50%;
+  top: 50%;
+
+  width: 76%;
+  height: 66%;
+
+  object-fit: contain;
+
+  transform:
+    translate(-50%, -50%);
+
+  z-index: 1;
+
+  animation:
+    leftInfoLogoFade 96s ease-in-out infinite;
+}
+
+
+/* =========================================================
+   LEFT FASCIA TIME / DATE
+========================================================= */
+
+#left-info-time {
+  position: absolute;
+
+  left: 49%;
+  top: 50%;
+
+  width: 78%;
+
+  transform:
+    translate(-50%, -50%)
+    rotate(5deg);
+
+  text-align: center;
+
+  color: rgba(255,255,255,.96);
+
+  z-index: 1;
+
+  opacity: 0;
+
+  animation:
+    leftInfoTimeFade 96s ease-in-out infinite;
+}
+
+#left-info-clock {
+  font-size: clamp(18px, 1.5vw, 36px);
+  font-weight: 700;
+  letter-spacing: .04em;
+  line-height: 1;
+}
+
+#left-info-date {
+  margin-top: 10px;
+
+  font-size: clamp(9px, .65vw, 15px);
+  font-weight: 500;
+  letter-spacing: .08em;
+
+  color: rgba(255,255,255,.66);
+}
+
+
+/* =========================================================
+   LEFT FASCIA WEATHER
+========================================================= */
+
+#left-info-weather {
+  position: absolute;
+
+  left: 49%;
+  top: 50%;
+
+  width: 78%;
+
+  transform:
+    translate(-50%, -50%)
+    rotate(5deg);
+
+  z-index: 1;
+
+  opacity: 0;
+
+  color: rgba(255,255,255,.96);
+
+  animation:
+    leftInfoWeatherFade 96s ease-in-out infinite;
+}
+
+#weather-location {
+  margin-bottom: 8px;
+
+  text-align: center;
+
+  font-size: clamp(9px, .62vw, 14px);
+  font-weight: 700;
+  letter-spacing: .10em;
+
+  color: rgba(229,172,76,.92);
+}
+
+#weather-main {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 9%;
+}
+
+#weather-temp {
+  font-size: clamp(26px, 2vw, 46px);
+  font-weight: 700;
+  line-height: 1;
+}
+
+#weather-details {
+  text-align: left;
+}
+
+#weather-condition {
+  font-size: clamp(11px, .8vw, 18px);
+  font-weight: 700;
+  letter-spacing: .07em;
+}
+
+#weather-range {
+  margin-top: 6px;
+
+  font-size: clamp(8px, .55vw, 13px);
+
+  color: rgba(255,255,255,.66);
+}
+
+
+/* =========================================================
+   LEFT FASCIA SPORTS
+========================================================= */
+
+#left-info-sports {
+  position: absolute;
+
+  left: 49%;
+  top: 50%;
+
+  width: 78%;
+
+  transform:
+    translate(-50%, -50%)
+    rotate(5deg);
+
+  text-align: center;
+
+  color: rgba(255,255,255,.96);
+
+  z-index: 1;
+
+  opacity: 0;
+
+  animation:
+    leftInfoSportsFade 96s ease-in-out infinite;
+}
+
+#sports-name {
+  margin-bottom: 7px;
+
+  font-size: clamp(9px, .62vw, 14px);
+  font-weight: 800;
+  letter-spacing: .12em;
+
+  color: rgba(229,172,76,.95);
+}
+
+#sports-matchup {
+  display: grid;
+
+  grid-template-columns:
+    auto
+    auto
+    12px
+    auto
+    auto;
+
+  align-items: center;
+  justify-content: center;
+
+  column-gap: 8px;
+}
+
+#sports-team-a,
+#sports-team-b {
+  font-size: clamp(12px, .9vw, 20px);
+  font-weight: 800;
+  letter-spacing: .05em;
+}
+
+#sports-score-a,
+#sports-score-b {
+  font-size: clamp(20px, 1.55vw, 36px);
+  font-weight: 800;
+
+  color: #fff;
+}
+
+#sports-divider {
+  font-size: clamp(12px, .8vw, 18px);
+
+  color: rgba(229,172,76,.75);
+}
+
+#sports-status {
+  margin-top: 7px;
+
+  font-size: clamp(8px, .55vw, 13px);
+  font-weight: 600;
+  letter-spacing: .08em;
+
+  color: rgba(255,255,255,.66);
+}
+
+
+/* =========================================================
+   LEFT FASCIA DOW JONES
+========================================================= */
+
+#left-info-dow {
+  position: absolute;
+
+  left: 49%;
+  top: 50%;
+
+  width: 78%;
+
+  transform:
+    translate(-50%, -50%)
+    rotate(5deg);
+
+  text-align: center;
+
+  color: rgba(255,255,255,.96);
+
+  z-index: 1;
+
+  opacity: 0;
+
+  animation:
+    leftInfoDowFade 96s ease-in-out infinite;
+}
+
+#dow-name {
+  margin-bottom: 5px;
+
+  font-size: clamp(9px, .62vw, 14px);
+  font-weight: 800;
+  letter-spacing: .12em;
+
+  color: rgba(229,172,76,.95);
+}
+
+#dow-value {
+  font-size: clamp(22px, 1.7vw, 40px);
+  font-weight: 800;
+  line-height: 1;
+
+  color: #fff;
+}
+
+#dow-change {
+  margin-top: 6px;
+
+  font-size: clamp(9px, .65vw, 15px);
+  font-weight: 700;
+  letter-spacing: .04em;
+
+  color: #72d58a;
+}
+
+#dow-percent {
+  margin-left: 5px;
+}
+
+#dow-status {
+  margin-top: 7px;
+
+  font-size: clamp(8px, .55vw, 13px);
+  font-weight: 600;
+  letter-spacing: .08em;
+
+  color: rgba(255,255,255,.66);
+}
+
+
+/* =========================================================
+   LEFT FASCIA TRAFFIC
+========================================================= */
+
+#left-info-traffic {
+  position: absolute;
+
+  left: 49%;
+  top: 50%;
+
+  width: 78%;
+
+  transform:
+    translate(-50%, -50%)
+    rotate(5deg);
+
+  text-align: center;
+
+  color: rgba(255,255,255,.96);
+
+  z-index: 1;
+
+  opacity: 0;
+
+  animation:
+    leftInfoTrafficFade 96s ease-in-out infinite;
+}
+
+#traffic-title {
+  margin-bottom: 6px;
+
+  font-size: clamp(9px, .62vw, 14px);
+  font-weight: 800;
+  letter-spacing: .12em;
+
+  color: rgba(229,172,76,.95);
+}
+
+#traffic-route {
+  font-size: clamp(10px, .72vw, 16px);
+  font-weight: 700;
+  letter-spacing: .06em;
+
+  color: #fff;
+}
+
+#traffic-condition {
+  margin-top: 7px;
+
+  font-size: clamp(13px, .95vw, 22px);
+  font-weight: 800;
+  line-height: 1.05;
+
+  color: #72d58a;
+}
+
+#traffic-status {
+  margin-top: 7px;
+
+  font-size: clamp(8px, .55vw, 13px);
+  font-weight: 600;
+  letter-spacing: .08em;
+
+  color: rgba(255,255,255,.66);
+}
+
+
+/* =========================================================
+   LEFT FASCIA WORLD NEWS
+========================================================= */
+
+#left-info-news {
+  position: absolute;
+
+  left: 49%;
+  top: 50%;
+
+  width: 78%;
+
+  transform:
+    translate(-50%, -50%)
+    rotate(5deg);
+
+  text-align: center;
+
+  color: rgba(255,255,255,.96);
+
+  z-index: 1;
+
+  opacity: 0;
+
+  animation:
+    leftInfoNewsFade 96s ease-in-out infinite;
+}
+
+#news-title {
+  margin-bottom: 7px;
+
+  font-size: clamp(9px, .62vw, 14px);
+  font-weight: 800;
+  letter-spacing: .12em;
+
+  color: rgba(229,172,76,.95);
+}
+
+#news-headline {
+  font-size: clamp(11px, .82vw, 18px);
+  font-weight: 800;
+  line-height: 1.15;
+
+  color: #fff;
+}
+
+#news-status {
+  margin-top: 7px;
+
+  font-size: clamp(8px, .55vw, 13px);
+  font-weight: 600;
+  letter-spacing: .08em;
+
+  color: rgba(255,255,255,.66);
+}
+
+
+/* =========================================================
+   LEFT FASCIA ROTATION
+========================================================= */
+
+@keyframes leftInfoLogoFade {
+  0% {
+    opacity: 0;
+  }
+
+  1.13% {
+    opacity: 1;
+  }
+
+  7.12% {
+    opacity: 1;
+  }
+
+  8.33% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes leftInfoTimeFade {
+  0% {
+    opacity: 0;
+  }
+
+  7.12% {
+    opacity: 0;
+  }
+
+  8.33% {
+    opacity: 1;
+  }
+
+  15.37% {
+    opacity: 1;
+  }
+
+  16.67% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes leftInfoWeatherFade {
+  0% {
+    opacity: 0;
+  }
+
+  15.37% {
+    opacity: 0;
+  }
+
+  16.67% {
+    opacity: 1;
+  }
+
+  23.62% {
+    opacity: 1;
+  }
+
+  25% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes leftInfoSportsFade {
+  0% {
+    opacity: 0;
+  }
+
+  23.62% {
+    opacity: 0;
+  }
+
+  25% {
+    opacity: 1;
+  }
+
+  73.75% {
+    opacity: 1;
+  }
+
+  75% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes leftInfoDowFade {
+  0% {
+    opacity: 0;
+  }
+
+  73.75% {
+    opacity: 0;
+  }
+
+  75% {
+    opacity: 1;
+  }
+
+  82.09% {
+    opacity: 1;
+  }
+
+  83.33% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes leftInfoTrafficFade {
+  0% {
+    opacity: 0;
+  }
+
+  82.09% {
+    opacity: 0;
+  }
+
+  83.33% {
+    opacity: 1;
+  }
+
+  90.42% {
+    opacity: 1;
+  }
+
+  91.67% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes leftInfoNewsFade {
+  0% {
+    opacity: 0;
+  }
+
+  90.42% {
+    opacity: 0;
+  }
+
+  91.67% {
+    opacity: 1;
+  }
+
+  98.75% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+
+/* =========================================================
+   CONTROL GLOW REFINEMENT
+========================================================= */
+
+#player-controls #previous-track,
+#player-controls #next-track {
+  border:
+    2px solid rgba(125, 211, 252, .72) !important;
+
+  box-shadow:
+    0 0 6px rgba(125, 211, 252, .28),
+    0 0 12px rgba(125, 211, 252, .12) !important;
+}
+
+#player-controls #play-pause {
+  border:
+    2px solid rgba(229, 172, 76, .82) !important;
+
+  box-shadow:
+    0 0 6px rgba(229, 172, 76, .30),
+    0 0 12px rgba(229, 172, 76, .14) !important;
 }
 
 
@@ -1277,427 +1972,4 @@ button {
     transition-duration: .01ms !important;
   }
 
-}
-#player-controls #previous-track,
-#player-controls #next-track {
-  border: 2px solid rgba(125, 211, 252, .72) !important;
-  box-shadow:
-    0 0 6px rgba(125, 211, 252, .28),
-    0 0 12px rgba(125, 211, 252, .12) !important;
-}
-
-#player-controls #play-pause {
-  border: 2px solid rgba(229, 172, 76, .82) !important;
-  box-shadow:
-    0 0 6px rgba(229, 172, 76, .30),
-    0 0 12px rgba(229, 172, 76, .14) !important;
-}
-#left-info-display {
-  position: absolute;
-  left: -0.6%;
-  top: 75.5%;
-  width: 20%;
-  height: 18%;
-
-  background: #05080a;
-
-  -webkit-mask: url("assets/images/front-left-fascia-mask.png") center / contain no-repeat;
-  mask: url("assets/images/front-left-fascia-mask.png") center / contain no-repeat;
-
-  z-index: 50;
-}
-
-#left-info-display::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-
-background:
-  linear-gradient(
-    180deg,
-    rgba(12, 22, 28, .96) 0%,
-    rgba(4, 10, 14, .98) 100%
-  );
-  -webkit-mask: url("assets/images/front-left-fascia-mask.png") center / contain no-repeat;
-  mask: url("assets/images/front-left-fascia-mask.png") center / contain no-repeat;
-
-  transform: scaleX(.92) scaleY(.96);
-  transform-origin: center;
-}
-#left-info-logo {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 76%;
-  height: 66%;
-  object-fit: contain;
-  transform: translate(-50%, -50%);
-  z-index: 1;
-}
-#left-info-display::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-background:
-  linear-gradient(
-    168deg,
-    rgba(255,255,255,0) 0%,
-    rgba(255,255,255,.16) 18%,
-    rgba(255,255,255,.05) 24%,
-    rgba(255,255,255,0) 34%
-  ),
-  linear-gradient(
-    165deg,
-    rgba(255,255,255,.10) 0%,
-    rgba(255,255,255,.035) 22%,
-    rgba(255,255,255,0) 48%
-  );
-  pointer-events: none;
-  z-index: 2;
-}
-#left-info-logo {
-  animation: leftInfoLogoFade 96s ease-in-out infinite;
-}
-
-#left-info-time {
-  position: absolute;
-  left: 49%;
-  top: 50%;
-  width: 78%;
-  transform: translate(-50%, -50%) rotate(5deg);
-  text-align: center;
-  color: rgba(255,255,255,.96);
-  z-index: 1;
-  opacity: 0;
-  animation: leftInfoTimeFade  96s ease-in-out infinite;
-}
-
-#left-info-clock {
-  font-size: clamp(18px, 1.5vw, 36px);
-  font-weight: 700;
-  letter-spacing: .04em;
-  line-height: 1;
-}
-
-#left-info-date {
-  margin-top: 10px;
-  font-size: clamp(9px, .65vw, 15px);
-  font-weight: 500;
-  letter-spacing: .08em;
-  color: rgba(255,255,255,.66);
-}
-
-#left-info-weather {
-  position: absolute;
-  left: 49%;
-  top: 50%;
-  width: 78%;
-  transform: translate(-50%, -50%) rotate(5deg);
-  z-index: 1;
-  opacity: 0;
-  color: rgba(255,255,255,.96);
-  animation: leftInfoWeatherFade  96s ease-in-out infinite;
-}
-
-#weather-location {
-  margin-bottom: 8px;
-  text-align: center;
-  font-size: clamp(9px, .62vw, 14px);
-  font-weight: 700;
-  letter-spacing: .10em;
-  color: rgba(229,172,76,.92);
-}
-
-#weather-main {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9%;
-}
-
-#weather-temp {
-  font-size: clamp(26px, 2vw, 46px);
-  font-weight: 700;
-  line-height: 1;
-}
-
-#weather-details {
-  text-align: left;
-}
-
-#weather-condition {
-  font-size: clamp(11px, .8vw, 18px);
-  font-weight: 700;
-  letter-spacing: .07em;
-}
-
-#weather-range {
-  margin-top: 6px;
-  font-size: clamp(8px, .55vw, 13px);
-  color: rgba(255,255,255,.66);
-}
-
-#left-info-sports {
-  position: absolute;
-  left: 49%;
-  top: 50%;
-  width: 78%;
-  transform: translate(-50%, -50%) rotate(5deg);
-  text-align: center;
-  color: rgba(255,255,255,.96);
-  z-index: 1;
-  opacity: 0;
-  animation: leftInfoSportsFade  96s ease-in-out infinite;
-}
-
-#sports-name {
-  margin-bottom: 7px;
-  font-size: clamp(9px, .62vw, 14px);
-  font-weight: 800;
-  letter-spacing: .12em;
-  color: rgba(229,172,76,.95);
-}
-
-#sports-matchup {
-  display: grid;
-  grid-template-columns: auto auto 12px auto auto;
-  align-items: center;
-  justify-content: center;
-  column-gap: 8px;
-}
-
-#sports-team-a,
-#sports-team-b {
-  font-size: clamp(12px, .9vw, 20px);
-  font-weight: 800;
-  letter-spacing: .05em;
-}
-
-#sports-score-a,
-#sports-score-b {
-  font-size: clamp(20px, 1.55vw, 36px);
-  font-weight: 800;
-  color: #ffffff;
-}
-
-#sports-divider {
-  font-size: clamp(12px, .8vw, 18px);
-  color: rgba(229,172,76,.75);
-}
-
-#sports-status {
-  margin-top: 7px;
-  font-size: clamp(8px, .55vw, 13px);
-  font-weight: 600;
-  letter-spacing: .08em;
-  color: rgba(255,255,255,.66);
-}
-/* =========================================================
-   DOW JONES / MARKET UPDATE
-========================================================= */
-
-#left-info-dow {
-  position: absolute;
-  left: 49%;
-  top: 50%;
-  width: 78%;
-
-  transform: translate(-50%, -50%) rotate(5deg);
-
-  text-align: center;
-  color: rgba(255,255,255,.96);
-
-  z-index: 1;
-  opacity: 0;
-
-  animation: leftInfoDowFade 96s ease-in-out infinite;
-}
-
-#dow-name {
-  margin-bottom: 5px;
-  font-size: clamp(9px, .62vw, 14px);
-  font-weight: 800;
-  letter-spacing: .12em;
-  color: rgba(229,172,76,.95);
-}
-
-#dow-value {
-  font-size: clamp(22px, 1.7vw, 40px);
-  font-weight: 800;
-  line-height: 1;
-  color: #ffffff;
-}
-
-#dow-change {
-  margin-top: 6px;
-  font-size: clamp(9px, .65vw, 15px);
-  font-weight: 700;
-  letter-spacing: .04em;
-  color: #72d58a;
-}
-
-#dow-percent {
-  margin-left: 5px;
-}
-
-#dow-status {
-  margin-top: 7px;
-  font-size: clamp(8px, .55vw, 13px);
-  font-weight: 600;
-  letter-spacing: .08em;
-  color: rgba(255,255,255,.66);
-}
-/* =========================================================
-   TRAFFIC REPORT
-========================================================= */
-
-#left-info-traffic {
-  position: absolute;
-  left: 49%;
-  top: 50%;
-  width: 78%;
-
-  transform: translate(-50%, -50%) rotate(5deg);
-
-  text-align: center;
-  color: rgba(255,255,255,.96);
-
-  z-index: 1;
-  opacity: 0;
-   animation: leftInfoTrafficFade 96s ease-in-out infinite;
-}
-
-#traffic-title {
-  margin-bottom: 6px;
-  font-size: clamp(9px, .62vw, 14px);
-  font-weight: 800;
-  letter-spacing: .12em;
-  color: rgba(229,172,76,.95);
-}
-
-#traffic-route {
-  font-size: clamp(10px, .72vw, 16px);
-  font-weight: 700;
-  letter-spacing: .06em;
-  color: #ffffff;
-}
-
-#traffic-condition {
-  margin-top: 7px;
-  font-size: clamp(13px, .95vw, 22px);
-  font-weight: 800;
-  line-height: 1.05;
-  color: #72d58a;
-}
-
-#traffic-status {
-  margin-top: 7px;
-  font-size: clamp(8px, .55vw, 13px);
-  font-weight: 600;
-  letter-spacing: .08em;
-  color: rgba(255,255,255,.66);
-}
-/* =========================================================
-   WORLD NEWS
-========================================================= */
-
-#left-info-news {
-  position: absolute;
-  left: 49%;
-  top: 50%;
-  width: 78%;
-
-  transform: translate(-50%, -50%) rotate(5deg);
-
-  text-align: center;
-  color: rgba(255,255,255,.96);
-
-  z-index: 1;
-  opacity: 0;
-  animation: leftInfoNewsFade 96s ease-in-out infinite;
-}
-
-#news-title {
-  margin-bottom: 7px;
-  font-size: clamp(9px, .62vw, 14px);
-  font-weight: 800;
-  letter-spacing: .12em;
-  color: rgba(229,172,76,.95);
-}
-
-#news-headline {
-  font-size: clamp(11px, .82vw, 18px);
-  font-weight: 800;
-  line-height: 1.15;
-  color: #ffffff;
-}
-
-#news-status {
-  margin-top: 7px;
-  font-size: clamp(8px, .55vw, 13px);
-  font-weight: 600;
-  letter-spacing: .08em;
-  color: rgba(255,255,255,.66);
-}
-
-
-@keyframes leftInfoLogoFade {
-  0%      { opacity: 0; }
-  1.13%   { opacity: 1; }
-  7.12%   { opacity: 1; }
-  8.33%   { opacity: 0; }
-  100%    { opacity: 0; }
-}
-
-@keyframes leftInfoTimeFade {
-  0%      { opacity: 0; }
-  7.12%   { opacity: 0; }
-  8.33%   { opacity: 1; }
-  15.37%  { opacity: 1; }
-  16.67%  { opacity: 0; }
-  100%    { opacity: 0; }
-}
-
-@keyframes leftInfoWeatherFade {
-  0%      { opacity: 0; }
-  15.37%  { opacity: 0; }
-  16.67%  { opacity: 1; }
-  23.62%  { opacity: 1; }
-  25%     { opacity: 0; }
-  100%    { opacity: 0; }
-}
-
-@keyframes leftInfoSportsFade {
-  0%      { opacity: 0; }
-  23.62%  { opacity: 0; }
-  25%     { opacity: 1; }
-  73.75%  { opacity: 1; }
-  75%     { opacity: 0; }
-  100%    { opacity: 0; }
-}
-
-@keyframes leftInfoDowFade {
-  0%      { opacity: 0; }
-  73.75%  { opacity: 0; }
-  75%     { opacity: 1; }
-  82.09%  { opacity: 1; }
-  83.33%  { opacity: 0; }
-  100%    { opacity: 0; }
-}
-
-@keyframes leftInfoTrafficFade {
-  0%      { opacity: 0; }
-  82.09%  { opacity: 0; }
-  83.33%  { opacity: 1; }
-  90.42%  { opacity: 1; }
-  91.67%  { opacity: 0; }
-  100%    { opacity: 0; }
-}
-
-@keyframes leftInfoNewsFade {
-  0%      { opacity: 0; }
-  90.42%  { opacity: 0; }
-  91.67%  { opacity: 1; }
-  98.75%  { opacity: 1; }
-  100%    { opacity: 0; }
 }
