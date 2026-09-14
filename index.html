@@ -1,8 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
   <title>AV Junki Radio</title>
 
   <meta
@@ -10,7 +16,12 @@
     content="AV Junki Radio — 24/7 music, podcasts, live audio, events, artists and interactive radio."
   />
 
- <link rel="stylesheet" href="radio.css?v=9" />
+  <link
+    rel="stylesheet"
+    href="radio.css?v=9"
+  />
+</head>
+
 
 <body>
 
@@ -18,17 +29,32 @@
 
     <section id="radio-hero">
 
+
+      <!-- =====================================================
+           MASTER HERO IMAGE
+      ====================================================== -->
+
       <img
         id="radio-hero-image"
-        src="assets/images/Hero-Radio.webp"
+        src="assets/Hero-Radio.webp"
         alt="AV Junki Radio virtual studio"
       />
+
+
+      <!-- =====================================================
+           CEILING GLOBE
+      ====================================================== -->
 
       <div
         id="ceiling-globe"
         class="interactive-layer"
         aria-hidden="true"
       ></div>
+
+
+      <!-- =====================================================
+           MAIN NAVIGATION
+      ====================================================== -->
 
       <nav
         id="radio-navigation"
@@ -44,14 +70,16 @@
           Home
         </a>
 
+
         <a
           id="nav-radio"
           class="nav-hotspot"
-          href="radio.html"
+          href="index.html"
           aria-label="Radio"
         >
           Radio
         </a>
+
 
         <button
           id="nav-podcast"
@@ -63,6 +91,7 @@
           Podcasts
         </button>
 
+
         <button
           id="nav-events"
           class="nav-hotspot"
@@ -72,6 +101,7 @@
         >
           Events
         </button>
+
 
         <button
           id="nav-news"
@@ -83,6 +113,7 @@
           News
         </button>
 
+
         <button
           id="nav-shop"
           class="nav-hotspot"
@@ -92,6 +123,7 @@
         >
           Shop
         </button>
+
 
         <button
           id="nav-community"
@@ -103,6 +135,7 @@
           Community
         </button>
 
+
         <button
           id="nav-advertise"
           class="nav-hotspot"
@@ -112,6 +145,7 @@
         >
           Advertise
         </button>
+
 
         <button
           id="nav-contact"
@@ -123,6 +157,7 @@
           Contact
         </button>
 
+
         <button
           id="nav-search"
           class="nav-hotspot"
@@ -133,6 +168,7 @@
           Search
         </button>
 
+
         <button
           id="nav-inquiry"
           class="nav-hotspot"
@@ -142,6 +178,7 @@
         >
           Inquiry
         </button>
+
 
         <button
           id="nav-about"
@@ -156,6 +193,10 @@
       </nav>
 
 
+      <!-- =====================================================
+           CENTER MEDIA SCREEN
+      ====================================================== -->
+
       <section
         id="center-screen"
         aria-label="AV Junki Radio information screen"
@@ -164,63 +205,89 @@
       </section>
 
 
+      <!-- =====================================================
+           MUSIC GENRE PANELS
+      ====================================================== -->
+
       <button
         class="panel-hotspot"
         id="hip-hop-panel"
+        type="button"
         data-channel="hip-hop"
         aria-label="Play Hip Hop"
       ></button>
 
+
       <button
         class="panel-hotspot"
         id="rnb-panel"
+        type="button"
         data-channel="rnb"
         aria-label="Play R&B"
       ></button>
 
+
       <button
         class="panel-hotspot"
         id="house-panel"
+        type="button"
         data-channel="house"
         aria-label="Play House"
       ></button>
 
+
       <button
         class="panel-hotspot"
         id="reggae-panel"
+        type="button"
         data-channel="reggae"
         aria-label="Play Reggae"
       ></button>
 
 
+      <!-- =====================================================
+           PODCAST / LIVE / GOSPEL PANELS
+      ====================================================== -->
+
       <button
         class="panel-hotspot"
         id="podcast-panel"
+        type="button"
         data-channel="podcast"
         aria-label="Open Podcasts"
       ></button>
 
+
       <button
         class="panel-hotspot"
         id="live-1-panel"
+        type="button"
         data-channel="live-1"
         aria-label="Open Live 1"
       ></button>
 
+
       <button
         class="panel-hotspot"
         id="live-2-panel"
+        type="button"
         data-channel="live-2"
         aria-label="Open Live 2"
       ></button>
 
+
       <button
         class="panel-hotspot"
         id="gospel-panel"
+        type="button"
         data-channel="gospel"
         aria-label="Play Gospel"
       ></button>
 
+
+      <!-- =====================================================
+           VIRTUAL HOST
+      ====================================================== -->
 
       <section
         id="virtual-host"
@@ -239,94 +306,202 @@
       </section>
 
 
+      <!-- =====================================================
+           BROADCAST PLAYER
+      ====================================================== -->
+
       <section
         id="broadcast-player"
         aria-label="AV Junki Radio broadcast player"
       >
-<div
-  id="left-info-display"
-  aria-hidden="true"
->
-  <img
-    id="left-info-logo"
-    src="assets/images/av-junki-radio-glass-logo.png"
-    alt=""
-  />
 
-  <div id="left-info-time">
-    <div id="left-info-clock">8:25 PM</div>
-    <div id="left-info-date">Friday, September 11</div>
-  </div>
 
- <div id="left-info-weather">
-    <div id="weather-location">HENDERSON, NV</div>
+        <!-- ===================================================
+             LEFT INFORMATION DISPLAY
+        ==================================================== -->
 
-    <div id="weather-main">
-      <div id="weather-temp">84°</div>
+        <div
+          id="left-info-display"
+          aria-hidden="true"
+        >
 
-      <div id="weather-details">
-        <div id="weather-condition">CLEAR</div>
-        <div id="weather-range">H 89° &nbsp; L 68°</div>
-      </div>
-    </div>
-  </div>
+          <img
+            id="left-info-logo"
+            src="assets/av-junki-radio-glass-logo.png"
+            alt=""
+          />
 
-  <div id="left-info-sports">
-    <div id="sports-name">FOOTBALL</div>
 
-    <div id="sports-matchup">
-      <div id="sports-team-a">LV</div>
-      <div id="sports-score-a">--</div>
+          <!-- TIME / DATE -->
 
-      <div id="sports-divider">-</div>
+          <div id="left-info-time">
 
-      <div id="sports-team-b">DAL</div>
-      <div id="sports-score-b">--</div>
-    </div>
+            <div id="left-info-clock">
+              8:25 PM
+            </div>
 
-    <div id="sports-status">PLACEHOLDER</div>
-  </div>
+            <div id="left-info-date">
+              Friday, September 11
+            </div>
 
-  <div id="left-info-dow">
-    <div id="dow-name">DOW JONES</div>
+          </div>
 
-    <div id="dow-value">--,---.--</div>
 
-    <div id="dow-change">
-      <span id="dow-points">--</span>
-      <span id="dow-percent">(--.--%)</span>
-    </div>
+          <!-- WEATHER -->
 
-    <div id="dow-status">MARKET CLOSED</div>
-  </div>
-<div id="left-info-traffic">
-  <div id="traffic-title">TRAFFIC REPORT</div>
+          <div id="left-info-weather">
 
-  <div id="traffic-route">HENDERSON / LAS VEGAS</div>
+            <div id="weather-location">
+              HENDERSON, NV
+            </div>
 
-  <div id="traffic-condition">
-    NO MAJOR DELAYS
-  </div>
+            <div id="weather-main">
 
-  <div id="traffic-status">
-    TRAFFIC UPDATE
-  </div>
-</div>
+              <div id="weather-temp">
+                84°
+              </div>
 
-        <div id="left-info-news">
-  <div id="news-title">WORLD NEWS</div>
+              <div id="weather-details">
 
-  <div id="news-headline">
-    MAJOR GLOBAL HEADLINE
-  </div>
+                <div id="weather-condition">
+                  CLEAR
+                </div>
 
-  <div id="news-status">
-    NEWS UPDATE
-  </div>
-</div>
-</div>
+                <div id="weather-range">
+                  H 89° &nbsp; L 68°
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <!-- SPORTS -->
+
+          <div id="left-info-sports">
+
+            <div id="sports-name">
+              FOOTBALL
+            </div>
+
+            <div id="sports-matchup">
+
+              <div id="sports-team-a">
+                LV
+              </div>
+
+              <div id="sports-score-a">
+                --
+              </div>
+
+              <div id="sports-divider">
+                -
+              </div>
+
+              <div id="sports-team-b">
+                DAL
+              </div>
+
+              <div id="sports-score-b">
+                --
+              </div>
+
+            </div>
+
+            <div id="sports-status">
+              PLACEHOLDER
+            </div>
+
+          </div>
+
+
+          <!-- DOW JONES -->
+
+          <div id="left-info-dow">
+
+            <div id="dow-name">
+              DOW JONES
+            </div>
+
+            <div id="dow-value">
+              --,---.--
+            </div>
+
+            <div id="dow-change">
+
+              <span id="dow-points">
+                --
+              </span>
+
+              <span id="dow-percent">
+                (--.--%)
+              </span>
+
+            </div>
+
+            <div id="dow-status">
+              MARKET CLOSED
+            </div>
+
+          </div>
+
+
+          <!-- TRAFFIC -->
+
+          <div id="left-info-traffic">
+
+            <div id="traffic-title">
+              TRAFFIC REPORT
+            </div>
+
+            <div id="traffic-route">
+              HENDERSON / LAS VEGAS
+            </div>
+
+            <div id="traffic-condition">
+              NO MAJOR DELAYS
+            </div>
+
+            <div id="traffic-status">
+              TRAFFIC UPDATE
+            </div>
+
+          </div>
+
+
+          <!-- WORLD NEWS -->
+
+          <div id="left-info-news">
+
+            <div id="news-title">
+              WORLD NEWS
+            </div>
+
+            <div id="news-headline">
+              MAJOR GLOBAL HEADLINE
+            </div>
+
+            <div id="news-status">
+              NEWS UPDATE
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- ===================================================
+             ALBUM ART
+        ==================================================== -->
+
         <div id="player-album-art"></div>
 
+
+        <!-- ===================================================
+             TRACK INFORMATION
+        ==================================================== -->
 
         <div id="player-track-info">
 
@@ -341,6 +516,10 @@
         </div>
 
 
+        <!-- ===================================================
+             SPECTRUM ANALYZER
+        ==================================================== -->
+
         <div id="spectrum-wrap">
 
           <canvas
@@ -351,11 +530,15 @@
         </div>
 
 
+        <!-- ===================================================
+             ANALOG VU METER
+        ==================================================== -->
+
         <div id="analog-vu">
 
           <img
             id="vu-face"
-            src="assets/images/vu-meter.png"
+            src="assets/vu-meter.png"
             alt="Analog VU meter"
           />
 
@@ -363,6 +546,10 @@
 
         </div>
 
+
+        <!-- ===================================================
+             GAIN REDUCTION METER
+        ==================================================== -->
 
         <div
           id="gr-meter-wrap"
@@ -384,12 +571,19 @@
         </div>
 
 
+        <!-- ===================================================
+             DSP STATUS
+        ==================================================== -->
+
         <div
           id="dsp-status"
           aria-label="DSP status"
         >
 
-          <span id="dsp-light"></span>
+          <span
+            id="dsp-light"
+            aria-hidden="true"
+          ></span>
 
           <span id="dsp-text">
             DSP
@@ -397,6 +591,10 @@
 
         </div>
 
+
+        <!-- ===================================================
+             TRANSPORT CONTROLS
+        ==================================================== -->
 
         <div id="player-controls">
 
@@ -408,6 +606,7 @@
             ◀
           </button>
 
+
           <button
             id="play-pause"
             type="button"
@@ -415,6 +614,7 @@
           >
             ▶
           </button>
+
 
           <button
             id="next-track"
@@ -426,6 +626,10 @@
 
         </div>
 
+
+        <!-- ===================================================
+             MAINSTREAM STATUS
+        ==================================================== -->
 
         <button
           id="mainstream-status"
@@ -454,19 +658,25 @@
         </button>
 
 
+        <!-- ===================================================
+             MASTER VOLUME
+        ==================================================== -->
+
         <div id="volume-control">
 
           <img
             id="volume-vu-face"
-            src="assets/images/av-junki-volume-vu.png"
+            src="assets/av-junki-volume-vu.png"
             alt="Volume VU control"
           />
-<img
-  id="volume-knob-center"
-  src="assets/images/volume-knob-center.png"
-  alt=""
-  aria-hidden="true"
-/>
+
+          <img
+            id="volume-knob-center"
+            src="assets/volume-knob-center.png"
+            alt=""
+            aria-hidden="true"
+          />
+
           <label
             for="volume-slider"
             class="sr-only"
@@ -486,6 +696,10 @@
         </div>
 
 
+        <!-- ===================================================
+             RADIO AUDIO ENGINE
+        ==================================================== -->
+
         <audio
           id="radio-audio"
           preload="metadata"
@@ -495,17 +709,28 @@
       </section>
 
 
+      <!-- =====================================================
+           STATUS MESSAGE
+      ====================================================== -->
+
       <div
         id="radio-status"
         role="status"
         aria-live="polite"
       ></div>
 
+
     </section>
 
   </main>
 
+
+  <!-- =========================================================
+       RADIO JAVASCRIPT
+  ========================================================== -->
+
   <script src="radio.js?v=4"></script>
 
 </body>
+
 </html>
