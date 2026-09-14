@@ -1,97 +1,87 @@
 /* =========================================================
    AV JUNKI RADIO
    radio.js
-   Broadcast player + real-time processing/meter hooks.
+
+   MASTER PLAYER / DSP / INFO DISPLAY CONTROLLER
 ========================================================= */
 
 "use strict";
 
 document.addEventListener("DOMContentLoaded", () => {
 
+  /* =========================================================
+     ELEMENTS
+  ========================================================= */
+
   const audio = document.getElementById("radio-audio");
 
-  const playPause =
-    document.getElementById("play-pause");
+  const playPause = document.getElementById("play-pause");
+  const previousTrack = document.getElementById("previous-track");
+  const nextTrack = document.getElementById("next-track");
 
-  const previousTrack =
-    document.getElementById("previous-track");
+  const volumeSlider = document.getElementById("volume-slider");
+  const volumeControl = document.getElementById("volume-control");
 
-  const nextTrack =
-    document.getElementById("next-track");
+  const radioStatus = document.getElementById("radio-status");
 
-  const volumeSlider =
-    document.getElementById("volume-slider");
-const volumeControl =
-  document.getElementById("volume-control");
-  const radioStatus =
-    document.getElementById("radio-status");
+  const screenContent = document.getElementById("screen-content");
+  const screenButtons = document.querySelectorAll("[data-screen]");
+  const panelButtons = document.querySelectorAll(".panel-hotspot");
 
-  const screenContent =
-    document.getElementById("screen-content");
+  const albumArt = document.getElementById("player-album-art");
+  const trackTitle = document.getElementById("player-track-title");
+  const trackArtist = document.getElementById("player-artist");
 
-  const screenButtons =
-    document.querySelectorAll("[data-screen]");
+  const spectrumCanvas = document.getElementById("spectrum-canvas");
+  const vuNeedle = document.getElementById("vu-needle");
 
-  const panelButtons =
-    document.querySelectorAll(".panel-hotspot");
+  const grFill = document.getElementById("gr-fill");
+  const grValue = document.getElementById("gr-value");
 
-  const albumArt =
-    document.getElementById("player-album-art");
+  const dspStatus = document.getElementById("dsp-status");
 
-  const trackTitle =
-    document.getElementById("player-track-title");
+  const mainstreamStatus = document.getElementById("mainstream-status");
+  const streamState = document.getElementById("stream-state");
 
-  const trackArtist =
-    document.getElementById("player-artist");
+  const leftInfoClock = document.getElementById("left-info-clock");
+  const leftInfoDate = document.getElementById("left-info-date");
 
-  const spectrumCanvas =
-    document.getElementById("spectrum-canvas");
+  const sportsName = document.getElementById("sports-name");
+  const sportsTeamA = document.getElementById("sports-team-a");
+  const sportsScoreA = document.getElementById("sports-score-a");
+  const sportsTeamB = document.getElementById("sports-team-b");
+  const sportsScoreB = document.getElementById("sports-score-b");
+  const sportsStatus = document.getElementById("sports-status");
 
-  const vuNeedle =
-    document.getElementById("vu-needle");
+  const dowValue = document.getElementById("dow-value");
+  const dowPoints = document.getElementById("dow-points");
+  const dowPercent = document.getElementById("dow-percent");
+  const dowStatus = document.getElementById("dow-status");
 
-  const grFill =
-    document.getElementById("gr-fill");
 
-  const grValue =
-    document.getElementById("gr-value");
-
-  const dspStatus =
-    document.getElementById("dsp-status");
-
-  const mainstreamStatus =
-    document.getElementById("mainstream-status");
-
-  const streamState =
-    document.getElementById("stream-state");
-
+  /* =========================================================
+     PLAYER / DSP STATE
+  ========================================================= */
 
   let audioContext = null;
-
   let sourceNode = null;
-
   let inputGain = null;
-
   let lowShelf = null;
-
   let presenceEQ = null;
-
   let compressor = null;
-
   let limiter = null;
-
   let analyser = null;
-
   let masterGain = null;
 
   let audioGraphReady = false;
-
   let animationFrame = null;
-
   let statusTimer = null;
-
   let activePreset = "music";
 
+
+  /* =========================================================
+     DSP PRESETS
+  ========================================================= */
 
   const presets = {
 
@@ -130,6 +120,73 @@ const volumeControl =
 
   };
 
+
+  /* =========================================================
+     SPORTS ROTATION
+  ========================================================= */
+
+  const sportsRotation = [
+
+    {
+      name: "FOOTBALL",
+      teamA: "LV",
+      scoreA: "--",
+      teamB: "DAL",
+      scoreB: "--",
+      status: "PLACEHOLDER"
+    },
+
+    {
+      name: "BASKETBALL",
+      teamA: "LV",
+      scoreA: "--",
+      teamB: "PHX",
+      scoreB: "--",
+      status: "PLACEHOLDER"
+    },
+
+    {
+      name: "BASEBALL",
+      teamA: "LAD",
+      scoreA: "--",
+      teamB: "SF",
+      scoreB: "--",
+      status: "PLACEHOLDER"
+    },
+
+    {
+      name: "HOCKEY",
+      teamA: "VGK",
+      scoreA: "--",
+      teamB: "LA",
+      scoreB: "--",
+      status: "PLACEHOLDER"
+    },
+
+    {
+      name: "HORSE RACING",
+      teamA: "RACE",
+      scoreA: "--",
+      teamB: "TRACK",
+      scoreB: "--",
+      status: "PLACEHOLDER"
+    },
+
+    {
+      name: "SOCCER",
+      teamA: "LV",
+      scoreA: "--",
+      teamB: "LA",
+      scoreB: "--",
+      status: "PLACEHOLDER"
+    }
+
+  ];
+
+
+  /* =========================================================
+     GENERAL HELPERS
+  ========================================================= */
 
   function setStatus(message) {
 
@@ -173,18 +230,24 @@ const volumeControl =
       return;
     }
 
+    const isOnAir = Boolean(onAir);
+
     mainstreamStatus.classList.toggle(
       "on-air",
-      Boolean(onAir)
+      isOnAir
     );
 
     streamState.textContent =
-      onAir ? "ON AIR" : "OFF AIR";
+      isOnAir
+        ? "ON AIR"
+        : "OFF AIR";
 
     mainstreamStatus.setAttribute(
       "aria-label",
       `Mainstream status: ${
-        onAir ? "On Air" : "Off Air"
+        isOnAir
+          ? "On Air"
+          : "Off Air"
       }`
     );
 
@@ -205,6 +268,24 @@ const volumeControl =
   }
 
 
+  function hasAudioSource() {
+
+    if (!audio) {
+      return false;
+    }
+
+    return Boolean(
+      audio.currentSrc ||
+      audio.getAttribute("src")
+    );
+
+  }
+
+
+  /* =========================================================
+     DSP PRESET CONTROL
+  ========================================================= */
+
   function applyPreset(name) {
 
     activePreset =
@@ -216,35 +297,39 @@ const volumeControl =
       return;
     }
 
-    const p =
+    const preset =
       presets[activePreset];
 
     inputGain.gain.value =
-      p.input;
+      preset.input;
 
     lowShelf.gain.value =
-      p.lowGain;
+      preset.lowGain;
 
     presenceEQ.gain.value =
-      p.presenceGain;
+      preset.presenceGain;
 
     compressor.threshold.value =
-      p.threshold;
+      preset.threshold;
 
     compressor.knee.value =
-      p.knee;
+      preset.knee;
 
     compressor.ratio.value =
-      p.ratio;
+      preset.ratio;
 
     compressor.attack.value =
-      p.attack;
+      preset.attack;
 
     compressor.release.value =
-      p.release;
+      preset.release;
 
   }
 
+
+  /* =========================================================
+     SPECTRUM CANVAS
+  ========================================================= */
 
   function resizeSpectrumCanvas() {
 
@@ -264,7 +349,7 @@ const volumeControl =
         )
       );
 
-    const w =
+    const width =
       Math.max(
         1,
         Math.round(
@@ -272,7 +357,7 @@ const volumeControl =
         )
       );
 
-    const h =
+    const height =
       Math.max(
         1,
         Math.round(
@@ -281,17 +366,24 @@ const volumeControl =
       );
 
     if (
-      spectrumCanvas.width !== w ||
-      spectrumCanvas.height !== h
+      spectrumCanvas.width !== width ||
+      spectrumCanvas.height !== height
     ) {
 
-      spectrumCanvas.width = w;
-      spectrumCanvas.height = h;
+      spectrumCanvas.width =
+        width;
+
+      spectrumCanvas.height =
+        height;
 
     }
 
   }
 
+
+  /* =========================================================
+     WEB AUDIO GRAPH
+  ========================================================= */
 
   function ensureAudioGraph() {
 
@@ -302,11 +394,9 @@ const volumeControl =
       return;
     }
 
-
     const AudioContextClass =
       window.AudioContext ||
       window.webkitAudioContext;
-
 
     if (!AudioContextClass) {
 
@@ -318,121 +408,149 @@ const volumeControl =
 
     }
 
+    try {
 
-    audioContext =
-      audioContext ||
-      new AudioContextClass();
+      audioContext =
+        new AudioContextClass();
 
 
-    sourceNode =
-      sourceNode ||
-      audioContext.createMediaElementSource(
-        audio
+      sourceNode =
+        audioContext.createMediaElementSource(
+          audio
+        );
+
+
+      inputGain =
+        audioContext.createGain();
+
+
+      lowShelf =
+        audioContext.createBiquadFilter();
+
+      lowShelf.type =
+        "lowshelf";
+
+      lowShelf.frequency.value =
+        120;
+
+
+      presenceEQ =
+        audioContext.createBiquadFilter();
+
+      presenceEQ.type =
+        "peaking";
+
+      presenceEQ.frequency.value =
+        3200;
+
+      presenceEQ.Q.value =
+        0.85;
+
+
+      compressor =
+        audioContext.createDynamicsCompressor();
+
+
+      limiter =
+        audioContext.createDynamicsCompressor();
+
+      limiter.threshold.value =
+        -1;
+
+      limiter.knee.value =
+        0;
+
+      limiter.ratio.value =
+        20;
+
+      limiter.attack.value =
+        0.002;
+
+      limiter.release.value =
+        0.08;
+
+
+      analyser =
+        audioContext.createAnalyser();
+
+      analyser.fftSize =
+        256;
+
+      analyser.smoothingTimeConstant =
+        0.78;
+
+
+      masterGain =
+        audioContext.createGain();
+
+      masterGain.gain.value =
+        volumeSlider
+          ? Number(
+              volumeSlider.value
+            ) / 100
+          : 0.8;
+
+
+      sourceNode
+        .connect(inputGain)
+        .connect(lowShelf)
+        .connect(presenceEQ)
+        .connect(compressor)
+        .connect(limiter)
+        .connect(analyser)
+        .connect(masterGain)
+        .connect(
+          audioContext.destination
+        );
+
+
+      audio.volume =
+        1;
+
+
+      audioGraphReady =
+        true;
+
+
+      audioContext.addEventListener(
+        "statechange",
+        () => {
+
+          setDSPState(
+            audioContext.state ===
+            "running"
+          );
+
+        }
       );
 
 
-    inputGain =
-      audioContext.createGain();
-
-
-    lowShelf =
-      audioContext.createBiquadFilter();
-
-    lowShelf.type =
-      "lowshelf";
-
-    lowShelf.frequency.value =
-      120;
-
-
-    presenceEQ =
-      audioContext.createBiquadFilter();
-
-    presenceEQ.type =
-      "peaking";
-
-    presenceEQ.frequency.value =
-      3200;
-
-    presenceEQ.Q.value =
-      0.85;
-
-
-    compressor =
-      audioContext.createDynamicsCompressor();
-
-
-    limiter =
-      audioContext.createDynamicsCompressor();
-
-    limiter.threshold.value =
-      -1;
-
-    limiter.knee.value =
-      0;
-
-    limiter.ratio.value =
-      20;
-
-    limiter.attack.value =
-      0.002;
-
-    limiter.release.value =
-      0.08;
-
-
-    analyser =
-      audioContext.createAnalyser();
-
-    analyser.fftSize =
-      256;
-
-    analyser.smoothingTimeConstant =
-      0.78;
-
-
-    masterGain =
-      audioContext.createGain();
-
-
-    masterGain.gain.value =
-      volumeSlider
-        ? Number(
-            volumeSlider.value
-          ) / 100
-        : 0.8;
-
-
-    sourceNode
-      .connect(inputGain)
-      .connect(lowShelf)
-      .connect(presenceEQ)
-      .connect(compressor)
-      .connect(limiter)
-      .connect(analyser)
-      .connect(masterGain)
-      .connect(
-        audioContext.destination
+      applyPreset(
+        activePreset
       );
 
 
-    audio.volume =
-      1;
+      resizeSpectrumCanvas();
 
 
-    audioGraphReady =
-      true;
+      startMeterAnimation();
 
+    } catch (error) {
 
-    applyPreset(
-      activePreset
-    );
+      console.error(
+        "AV Junki Radio audio graph error:",
+        error
+      );
 
+      setStatus(
+        "Audio processing could not start."
+      );
 
-    resizeSpectrumCanvas();
+      setDSPState(
+        false
+      );
 
-
-    startMeterAnimation();
+    }
 
   }
 
@@ -441,10 +559,10 @@ const volumeControl =
 
     ensureAudioGraph();
 
-
     if (
       audioContext &&
-      audioContext.state === "suspended"
+      audioContext.state ===
+      "suspended"
     ) {
 
       try {
@@ -452,6 +570,11 @@ const volumeControl =
         await audioContext.resume();
 
       } catch (error) {
+
+        console.error(
+          "AV Junki Radio resume error:",
+          error
+        );
 
         setStatus(
           "Audio processing could not start."
@@ -461,16 +584,20 @@ const volumeControl =
 
     }
 
-
     setDSPState(
       Boolean(
         audioContext &&
-        audioContext.state === "running"
+        audioContext.state ===
+        "running"
       )
     );
 
   }
 
+
+  /* =========================================================
+     METERS
+  ========================================================= */
 
   function startMeterAnimation() {
 
@@ -481,18 +608,15 @@ const volumeControl =
       return;
     }
 
-
     const frequencyData =
       new Uint8Array(
         analyser.frequencyBinCount
       );
 
-
     const timeData =
       new Uint8Array(
         analyser.fftSize
       );
-
 
     const draw = () => {
 
@@ -501,29 +625,25 @@ const volumeControl =
           draw
         );
 
-
       drawSpectrum(
         frequencyData
       );
-
 
       drawAnalogVU(
         timeData
       );
 
-
       drawGainReduction();
-
 
       setDSPState(
         Boolean(
           audioContext &&
-          audioContext.state === "running"
+          audioContext.state ===
+          "running"
         )
       );
 
     };
-
 
     draw();
 
@@ -539,33 +659,26 @@ const volumeControl =
       return;
     }
 
-
     resizeSpectrumCanvas();
-
 
     const ctx =
       spectrumCanvas.getContext(
         "2d"
       );
 
-
     if (!ctx) {
       return;
     }
-
 
     analyser.getByteFrequencyData(
       frequencyData
     );
 
-
     const width =
       spectrumCanvas.width;
 
-
     const height =
       spectrumCanvas.height;
-
 
     ctx.clearRect(
       0,
@@ -573,7 +686,6 @@ const volumeControl =
       width,
       height
     );
-
 
     const gradient =
       ctx.createLinearGradient(
@@ -583,38 +695,31 @@ const volumeControl =
         0
       );
 
-
     gradient.addColorStop(
       0,
       "rgba(45,185,255,.95)"
     );
-
 
     gradient.addColorStop(
       0.48,
       "rgba(108,118,255,.96)"
     );
 
-
     gradient.addColorStop(
       0.74,
       "rgba(222,147,76,.98)"
     );
-
 
     gradient.addColorStop(
       1,
       "rgba(255,93,55,1)"
     );
 
-
     ctx.fillStyle =
       gradient;
 
-
     const bars =
       42;
-
 
     const gap =
       Math.max(
@@ -622,13 +727,11 @@ const volumeControl =
         width * 0.0035
       );
 
-
     const barWidth =
       (
         width -
         gap * (bars - 1)
       ) / bars;
-
 
     for (
       let i = 0;
@@ -643,11 +746,9 @@ const volumeControl =
           0.72
         );
 
-
       const normalized =
         frequencyData[dataIndex] /
         255;
-
 
       const barHeight =
         Math.max(
@@ -657,7 +758,6 @@ const volumeControl =
           0.94
         );
 
-
       const x =
         i *
         (
@@ -665,11 +765,9 @@ const volumeControl =
           gap
         );
 
-
       const y =
         height -
         barHeight;
-
 
       ctx.fillRect(
         x,
@@ -695,15 +793,12 @@ const volumeControl =
       return;
     }
 
-
     analyser.getByteTimeDomainData(
       timeData
     );
 
-
     let sumSquares =
       0;
-
 
     for (
       let i = 0;
@@ -717,13 +812,11 @@ const volumeControl =
           128
         ) / 128;
 
-
       sumSquares +=
         sample *
         sample;
 
     }
-
 
     const rms =
       Math.sqrt(
@@ -731,13 +824,11 @@ const volumeControl =
         timeData.length
       );
 
-
     const db =
       rms > 0
         ? 20 *
           Math.log10(rms)
         : -60;
-
 
     const clampedDb =
       Math.max(
@@ -748,19 +839,16 @@ const volumeControl =
         )
       );
 
-
     const normalized =
       (
         clampedDb +
         30
       ) / 33;
 
-
     const degrees =
       -42 +
       normalized *
       84;
-
 
     vuNeedle.style.transform =
       `translateX(-50%) rotate(${degrees.toFixed(2)}deg)`;
@@ -778,7 +866,6 @@ const volumeControl =
       return;
     }
 
-
     const reduction =
       Math.max(
         0,
@@ -791,55 +878,73 @@ const volumeControl =
         )
       );
 
-
     const percent =
       (
         reduction /
         12
       ) * 100;
 
-
     grFill.style.height =
       `${percent.toFixed(1)}%`;
-
 
     grValue.textContent =
       `${reduction.toFixed(1)} dB`;
 
   }
 
-function updateVolumeHardware(value) {
 
-  if (!volumeControl) {
-    return;
-  }
+  /* =========================================================
+     VOLUME HARDWARE
+  ========================================================= */
 
-  const percent =
-    Math.max(
-      0,
-      Math.min(
-        100,
-        Number(value)
-      )
+  function updateVolumeHardware(value) {
+
+    if (!volumeControl) {
+      return;
+    }
+
+    const percent =
+      Math.max(
+        0,
+        Math.min(
+          100,
+          Number(value)
+        )
+      );
+
+    const needleMin =
+      -38;
+
+    const needleMax =
+      38;
+
+    const needleAngle =
+      needleMin +
+      (percent / 100) *
+      (
+        needleMax -
+        needleMin
+      );
+
+    const centerAngle =
+      -135 +
+      (percent / 100) *
+      270 -
+      5;
+
+    volumeControl.style.setProperty(
+      "--volume-angle",
+      `${needleAngle.toFixed(2)}deg`
     );
 
-  const needleMin = -38;
-  const needleMax = 38;
+    volumeControl.style.setProperty(
+      "--volume-center-angle",
+      `${centerAngle.toFixed(2)}deg`
+    );
 
-  const needleAngle =
-    needleMin +
-    (percent / 100) *
-    (needleMax - needleMin);
+  }
 
-  volumeControl.style.setProperty(
-    "--volume-angle",
-    `${needleAngle.toFixed(2)}deg`
-  );
-volumeControl.style.setProperty(
-  "--volume-center-angle",
-  `${(-135 + (percent / 100) * 270 - 5).toFixed(2)}deg`
-);
-}
+
   if (
     volumeSlider &&
     audio
@@ -849,9 +954,12 @@ volumeControl.style.setProperty(
       Number(
         volumeSlider.value
       ) / 100;
-updateVolumeHardware(
-  volumeSlider.value
-);
+
+
+    updateVolumeHardware(
+      volumeSlider.value
+    );
+
 
     volumeSlider.addEventListener(
       "input",
@@ -861,9 +969,12 @@ updateVolumeHardware(
           Number(
             volumeSlider.value
           ) / 100;
-updateVolumeHardware(
-  volumeSlider.value
-);
+
+
+        updateVolumeHardware(
+          volumeSlider.value
+        );
+
 
         await resumeAudioContext();
 
@@ -893,6 +1004,10 @@ updateVolumeHardware(
   }
 
 
+  /* =========================================================
+     PLAYER CONTROLS
+  ========================================================= */
+
   if (
     playPause &&
     audio
@@ -902,24 +1017,22 @@ updateVolumeHardware(
       "click",
       async () => {
 
-        await resumeAudioContext();
-
-
-        if (!audio.src) {
+        if (!hasAudioSource()) {
 
           setMainstreamState(
             false
           );
 
-
           setStatus(
             "Mainstream is off air — stream source not connected yet."
           );
 
-
           return;
 
         }
+
+
+        await resumeAudioContext();
 
 
         try {
@@ -936,10 +1049,14 @@ updateVolumeHardware(
 
         } catch (error) {
 
+          console.error(
+            "AV Junki Radio playback error:",
+            error
+          );
+
           setMainstreamState(
             false
           );
-
 
           setStatus(
             "Unable to start the audio stream."
@@ -958,12 +1075,10 @@ updateVolumeHardware(
         playPause.textContent =
           "❚❚";
 
-
         playPause.setAttribute(
           "aria-label",
           "Pause"
         );
-
 
         setMainstreamState(
           true
@@ -980,12 +1095,10 @@ updateVolumeHardware(
         playPause.textContent =
           "▶";
 
-
         playPause.setAttribute(
           "aria-label",
           "Play"
         );
-
 
         setMainstreamState(
           false
@@ -1030,7 +1143,7 @@ updateVolumeHardware(
         setStatus(
           audio &&
           !audio.paused &&
-          audio.src
+          hasAudioSource()
 
             ? "Mainstream is on air."
 
@@ -1075,6 +1188,10 @@ updateVolumeHardware(
   }
 
 
+  /* =========================================================
+     CENTER SCREEN NAVIGATION
+  ========================================================= */
+
   screenButtons.forEach(
     (button) => {
 
@@ -1086,14 +1203,12 @@ updateVolumeHardware(
             button.dataset.screen ||
             "";
 
-
           if (screenContent) {
 
             screenContent.dataset.activeScreen =
               screen;
 
           }
-
 
           setStatus(
             formatLabel(
@@ -1108,6 +1223,10 @@ updateVolumeHardware(
   );
 
 
+  /* =========================================================
+     GENRE / CHANNEL PANELS
+  ========================================================= */
+
   panelButtons.forEach(
     (button) => {
 
@@ -1118,7 +1237,6 @@ updateVolumeHardware(
           const channel =
             button.dataset.channel ||
             "";
-
 
           if (
             channel ===
@@ -1147,7 +1265,6 @@ updateVolumeHardware(
 
           }
 
-
           setStatus(
             formatLabel(
               channel
@@ -1160,6 +1277,10 @@ updateVolumeHardware(
     }
   );
 
+
+  /* =========================================================
+     PUBLIC TRACK LOADER
+  ========================================================= */
 
   window.setRadioTrack = ({
 
@@ -1220,9 +1341,7 @@ updateVolumeHardware(
       audio.src =
         src;
 
-
       audio.load();
-
 
       setMainstreamState(
         false
@@ -1233,28 +1352,187 @@ updateVolumeHardware(
   };
 
 
+  /* =========================================================
+     LEFT INFO — LIVE CLOCK / DATE
+  ========================================================= */
+
+  function updateLeftInfoTime() {
+
+    if (
+      !leftInfoClock ||
+      !leftInfoDate
+    ) {
+      return;
+    }
+
+    const now =
+      new Date();
+
+    leftInfoClock.textContent =
+      now.toLocaleTimeString(
+        [],
+        {
+          hour: "numeric",
+          minute: "2-digit"
+        }
+      );
+
+    leftInfoDate.textContent =
+      now.toLocaleDateString(
+        [],
+        {
+          weekday: "long",
+          month: "long",
+          day: "numeric"
+        }
+      );
+
+  }
+
+
+  /* =========================================================
+     LEFT INFO — SPORTS
+  ========================================================= */
+
+  function showSport(index) {
+
+    const sport =
+      sportsRotation[index];
+
+    if (
+      !sport ||
+      !sportsName ||
+      !sportsTeamA ||
+      !sportsScoreA ||
+      !sportsTeamB ||
+      !sportsScoreB ||
+      !sportsStatus
+    ) {
+      return;
+    }
+
+    sportsName.textContent =
+      sport.name;
+
+    sportsTeamA.textContent =
+      sport.teamA;
+
+    sportsScoreA.textContent =
+      sport.scoreA;
+
+    sportsTeamB.textContent =
+      sport.teamB;
+
+    sportsScoreB.textContent =
+      sport.scoreB;
+
+    sportsStatus.textContent =
+      sport.status;
+
+  }
+
+
+  function runSportsCycle() {
+
+    let index =
+      0;
+
+    showSport(
+      index
+    );
+
+    const sportsTimer =
+      window.setInterval(
+        () => {
+
+          index +=
+            1;
+
+          if (
+            index >=
+            sportsRotation.length
+          ) {
+
+            window.clearInterval(
+              sportsTimer
+            );
+
+            return;
+
+          }
+
+          showSport(
+            index
+          );
+
+        },
+        8000
+      );
+
+  }
+
+
+  function scheduleSportsCycle() {
+
+    showSport(
+      0
+    );
+
+    window.setTimeout(
+      () => {
+
+        runSportsCycle();
+
+      },
+      2000
+    );
+
+  }
+
+
+  /* =========================================================
+     LEFT INFO — DOW PLACEHOLDER
+  ========================================================= */
+
+  function updateDowDisplay() {
+
+    if (
+      !dowValue ||
+      !dowPoints ||
+      !dowPercent ||
+      !dowStatus
+    ) {
+      return;
+    }
+
+    dowValue.textContent =
+      "46,250.00";
+
+    dowPoints.textContent =
+      "+125.50";
+
+    dowPercent.textContent =
+      "(+0.27%)";
+
+    dowStatus.textContent =
+      "MARKET CLOSED";
+
+  }
+
+
+  /* =========================================================
+     PAGE EVENTS
+  ========================================================= */
+
   window.addEventListener(
     "resize",
     resizeSpectrumCanvas
   );
 
 
-  if (audioContext) {
-
-    audioContext.addEventListener(
-      "statechange",
-      () => {
-
-        setDSPState(
-          audioContext.state ===
-          "running"
-        );
-
-      }
-    );
-
-  }
-
+  /* =========================================================
+     INITIALIZE
+  ========================================================= */
 
   setMainstreamState(
     false
@@ -1265,136 +1543,43 @@ updateVolumeHardware(
     false
   );
 
+
+  resizeSpectrumCanvas();
+
+
+  updateLeftInfoTime();
+
+
+  window.setInterval(
+    updateLeftInfoTime,
+    1000
+  );
+
+
+  showSport(
+    0
+  );
+
+
+  window.setTimeout(
+    () => {
+
+      scheduleSportsCycle();
+
+      window.setInterval(
+        () => {
+
+          scheduleSportsCycle();
+
+        },
+        96000
+      );
+
+    },
+    22000
+  );
+
+
+  updateDowDisplay();
+
 });
-function updateLeftInfoTime() {
-  const clock = document.getElementById("left-info-clock");
-  const date = document.getElementById("left-info-date");
-
-  if (!clock || !date) return;
-
-  const now = new Date();
-
-  clock.textContent = now.toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit"
-  });
-
-  date.textContent = now.toLocaleDateString([], {
-    weekday: "long",
-    month: "long",
-    day: "numeric"
-  });
-}
-
-updateLeftInfoTime();
-setInterval(updateLeftInfoTime, 1000);
-const sportsRotation = [
-  {
-    name: "FOOTBALL",
-    teamA: "LV",
-    scoreA: "--",
-    teamB: "DAL",
-    scoreB: "--",
-    status: "PLACEHOLDER"
-  },
-  {
-    name: "BASKETBALL",
-    teamA: "LV",
-    scoreA: "--",
-    teamB: "PHX",
-    scoreB: "--",
-    status: "PLACEHOLDER"
-  },
-  {
-    name: "BASEBALL",
-    teamA: "LAD",
-    scoreA: "--",
-    teamB: "SF",
-    scoreB: "--",
-    status: "PLACEHOLDER"
-  },
-  {
-    name: "HOCKEY",
-    teamA: "VGK",
-    scoreA: "--",
-    teamB: "LA",
-    scoreB: "--",
-    status: "PLACEHOLDER"
-  },
-  {
-    name: "HORSE RACING",
-    teamA: "RACE",
-    scoreA: "--",
-    teamB: "TRACK",
-    scoreB: "--",
-    status: "PLACEHOLDER"
-  },
-  {
-    name: "SOCCER",
-    teamA: "LV",
-    scoreA: "--",
-    teamB: "LA",
-    scoreB: "--",
-    status: "PLACEHOLDER"
-  }
-];
-
-function showSport(index) {
-  const sport = sportsRotation[index];
-
-  document.getElementById("sports-name").textContent = sport.name;
-  document.getElementById("sports-team-a").textContent = sport.teamA;
-  document.getElementById("sports-score-a").textContent = sport.scoreA;
-  document.getElementById("sports-team-b").textContent = sport.teamB;
-  document.getElementById("sports-score-b").textContent = sport.scoreB;
-  document.getElementById("sports-status").textContent = sport.status;
-}
-
-function runSportsCycle() {
-  let index = 0;
-
-  showSport(index);
-
-  const sportsTimer = setInterval(() => {
-    index++;
-
-    if (index >= sportsRotation.length) {
-      clearInterval(sportsTimer);
-      return;
-    }
-
-    showSport(index);
-  }, 8000);
-}
-
-function scheduleSportsCycle() {
-  showSport(0);
-
-  setTimeout(() => {
-    runSportsCycle();
-  }, 2000);
-}
-
-setTimeout(() => {
-  scheduleSportsCycle();
-
-  setInterval(() => {
-    scheduleSportsCycle();
-  }, 96000);
-
-}, 22000);
-function updateDowDisplay() {
-  const value = document.getElementById("dow-value");
-  const points = document.getElementById("dow-points");
-  const percent = document.getElementById("dow-percent");
-  const status = document.getElementById("dow-status");
-
-  if (!value || !points || !percent || !status) return;
-
-  value.textContent = "46,250.00";
-  points.textContent = "+125.50";
-  percent.textContent = "(+0.27%)";
-  status.textContent = "MARKET CLOSED";
-}
-
-updateDowDisplay();
