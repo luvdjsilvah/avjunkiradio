@@ -32,6 +32,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const trackTitle = document.getElementById("player-track-title");
   const trackArtist = document.getElementById("player-artist");
 
+  let trackVideo = null;
+  let videoSyncing = false;
+
   const spectrumCanvas = document.getElementById("spectrum-canvas");
   const vuNeedle = document.getElementById("vu-needle");
 
@@ -1156,14 +1159,220 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
 
+  /* =========================================================
+     TEST PLAYLIST / MUSIC VIDEO
+  ========================================================= */
+
+  const playlist = [
+    {
+      title: "Son of a Preacher Man",
+      artist: "Searvaxter Charles Gardner Jr.",
+      artwork: "assets/son-of-a-preacher-man-cover.png",
+      src: "assets/son-of-a-preacher-man.wav",
+      video: "assets/son-of-a-preacher-man.mp4",
+      preset: "music"
+    }
+  ];
+
+  let currentTrackIndex = 0;
+
+
+  function ensureTrackVideo() {
+
+    if (!screenContent) {
+      return null;
+    }
+
+    if (trackVideo) {
+      return trackVideo;
+    }
+
+    trackVideo = document.createElement("video");
+    trackVideo.id = "radio-track-video";
+    trackVideo.muted = true;
+    trackVideo.playsInline = true;
+    trackVideo.preload = "metadata";
+    trackVideo.setAttribute(
+      "aria-label",
+      "Now playing music video"
+    );
+
+    Object.assign(
+      trackVideo.style,
+      {
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        display: "none",
+        background: "#000"
+      }
+    );
+
+    screenContent.appendChild(
+      trackVideo
+    );
+
+    return trackVideo;
+
+  }
+
+
+  function syncVideoToAudio(force = false) {
+
+    if (
+      !audio ||
+      !trackVideo ||
+      !trackVideo.src
+    ) {
+      return;
+    }
+
+    const difference =
+      Math.abs(
+        trackVideo.currentTime -
+        audio.currentTime
+      );
+
+    if (
+      force ||
+      difference > 0.35
+    ) {
+
+      try {
+
+        trackVideo.currentTime =
+          audio.currentTime;
+
+      } catch (error) {
+
+        /*
+          Video metadata may not be ready yet.
+          The next sync will catch it.
+        */
+
+      }
+
+    }
+
+  }
+
+
+  function showTrackVideo() {
+
+    const video =
+      ensureTrackVideo();
+
+    if (
+      !video ||
+      !video.src
+    ) {
+      return;
+    }
+
+    video.style.display =
+      "block";
+
+    syncVideoToAudio(
+      true
+    );
+
+    const promise =
+      video.play();
+
+    if (
+      promise &&
+      typeof promise.catch ===
+      "function"
+    ) {
+
+      promise.catch(
+        () => {}
+      );
+
+    }
+
+  }
+
+
+  function pauseTrackVideo() {
+
+    if (!trackVideo) {
+      return;
+    }
+
+    trackVideo.pause();
+
+  }
+
+
+  function loadTrack(
+    index,
+    autoplay = false
+  ) {
+
+    if (!playlist.length) {
+      return;
+    }
+
+    currentTrackIndex =
+      (
+        index +
+        playlist.length
+      ) %
+      playlist.length;
+
+    const track =
+      playlist[
+        currentTrackIndex
+      ];
+
+    window.setRadioTrack(
+      track
+    );
+
+    if (
+      autoplay &&
+      audio
+    ) {
+
+      resumeAudioContext()
+        .then(
+          async () => {
+
+            try {
+
+              await audio.play();
+
+            } catch (error) {
+
+              console.error(
+                "AV Junki Radio autoplay error:",
+                error
+              );
+
+              setStatus(
+                "Press play to start the track."
+              );
+
+            }
+
+          }
+        );
+
+    }
+
+  }
+
+
   if (previousTrack) {
 
     previousTrack.addEventListener(
       "click",
       () => {
 
-        setStatus(
-          "Previous track hook ready."
+        loadTrack(
+          currentTrackIndex - 1,
+          true
         );
 
       }
@@ -1178,8 +1387,9 @@ document.addEventListener("DOMContentLoaded", () => {
       "click",
       () => {
 
-        setStatus(
-          "Next track hook ready."
+        loadTrack(
+          currentTrackIndex + 1,
+          true
         );
 
       }
@@ -1207,6 +1417,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
             screenContent.dataset.activeScreen =
               screen;
+
+          }
+
+          if (trackVideo) {
+
+            trackVideo.style.display =
+              "none";
+
+            trackVideo.pause();
 
           }
 
@@ -1296,6 +1515,9 @@ document.addEventListener("DOMContentLoaded", () => {
     src =
       "",
 
+    video =
+      "",
+
     preset =
       "music"
 
@@ -1338,6 +1560,8 @@ document.addEventListener("DOMContentLoaded", () => {
       src
     ) {
 
+      audio.pause();
+
       audio.src =
         src;
 
@@ -1349,7 +1573,103 @@ document.addEventListener("DOMContentLoaded", () => {
 
     }
 
+
+    const videoElement =
+      ensureTrackVideo();
+
+    if (videoElement) {
+
+      videoElement.pause();
+
+      videoElement.removeAttribute(
+        "src"
+      );
+
+      videoElement.load();
+
+      videoElement.style.display =
+        "none";
+
+      if (video) {
+
+        videoElement.src =
+          video;
+
+        videoElement.load();
+
+      }
+
+    }
+
   };
+
+
+  if (audio) {
+
+    audio.addEventListener(
+      "play",
+      () => {
+
+        showTrackVideo();
+
+      }
+    );
+
+
+    audio.addEventListener(
+      "pause",
+      () => {
+
+        pauseTrackVideo();
+
+      }
+    );
+
+
+    audio.addEventListener(
+      "seeking",
+      () => {
+
+        syncVideoToAudio(
+          true
+        );
+
+      }
+    );
+
+
+    audio.addEventListener(
+      "timeupdate",
+      () => {
+
+        if (videoSyncing) {
+          return;
+        }
+
+        videoSyncing =
+          true;
+
+        syncVideoToAudio(
+          false
+        );
+
+        videoSyncing =
+          false;
+
+      }
+    );
+
+
+    audio.addEventListener(
+      "ended",
+      () => {
+
+        pauseTrackVideo();
+
+      }
+    );
+
+  }
 
 
   /* =========================================================
@@ -1581,5 +1901,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   updateDowDisplay();
+
+
+  /* Load first test track without autoplaying. */
+
+  loadTrack(
+    0,
+    false
+  );
 
 });
