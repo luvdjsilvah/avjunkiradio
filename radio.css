@@ -312,24 +312,7 @@ button {
 
   background: transparent;
 
-  clip-path: polygon(
-    1.2% 3%,
-    8% 1.2%,
-    20% 0.4%,
-    50% 0%,
-    80% 0.4%,
-    92% 1.2%,
-    98.8% 3%,
-    100% 50%,
-    98.8% 97%,
-    92% 98.8%,
-    80% 99.6%,
-    50% 100%,
-    20% 99.6%,
-    8% 98.8%,
-    1.2% 97%,
-    0% 50%
-  );
+ 
 }
 #screen-content {
   width: 100%;
@@ -1990,4 +1973,14 @@ button {
     transition-duration: .01ms !important;
   }
 
+}
+/* =========================================================
+   MUSIC VIDEO — CURVED SCREEN FIT
+========================================================= */
+
+#radio-track-video {
+  transform: scaleX(1.035) scaleY(1.02);
+  transform-origin: center center;
+
+  border-radius: 4% / 7%;
 }
