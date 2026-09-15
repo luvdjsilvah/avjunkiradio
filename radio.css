@@ -1983,4 +1983,5 @@ button {
   transform-origin: center center;
 
   border-radius: 4% / 7%;
+   filter: url("#curved-screen-filter");
 }
