@@ -1201,9 +1201,8 @@ const playlist = [
       {
         width: "100%",
         height: "100%",
-     objectFit: "contain",
-    transform: "scale(1.03)",
-        display: "none",
+   objectFit: "cover",
+    display: "none",
         background: "#000"
       }
     );
