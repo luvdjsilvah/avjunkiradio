@@ -1169,7 +1169,7 @@ const playlist = [
     artist: "Searvaxter Charles Gardner Jr.",
   artwork: "assets/son-of-a-preacher-man-cover.png",
     src: "assets/audio/son-of-a-preacher-man.mp3",
- video: "https://pub-2e91fa0475164dd8ab4072317209d9ac.r2.dev/Son-of-a-Preacher-Man.mov",
+ video: "https://pub-2e91fa0475164dd8ab4072317209d9ac.r2.dev/Son-of-a-Preacher-Man.mp4",
     preset: "music"
   }
 ];
