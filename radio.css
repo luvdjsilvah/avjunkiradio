@@ -1976,15 +1976,37 @@ button {
 }
 
 /* =========================================================
-   MUSIC VIDEO — PANORAMIC SCREEN SHAPE
+   MUSIC VIDEO — MATCH PHYSICAL SCREEN OPENING
 ========================================================= */
 
 #radio-track-video {
-  clip-path: path(
-    "M 0 0
-     Q 50 8 100 0
-     L 100 100
-     Q 50 92 0 100
-     Z"
+  clip-path: polygon(
+    /* TOP — high at sides, lower toward center */
+    0% 0%,
+    10% 1.2%,
+    20% 2.4%,
+    30% 3.3%,
+    40% 3.9%,
+    50% 4.2%,
+    60% 3.9%,
+    70% 3.3%,
+    80% 2.4%,
+    90% 1.2%,
+    100% 0%,
+
+    /* RIGHT SIDE */
+    100% 100%,
+
+    /* BOTTOM — high toward center */
+    90% 98.8%,
+    80% 97.6%,
+    70% 96.7%,
+    60% 96.1%,
+    50% 95.8%,
+    40% 96.1%,
+    30% 96.7%,
+    20% 97.6%,
+    10% 98.8%,
+    0% 100%
   );
 }
