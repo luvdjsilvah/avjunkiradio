@@ -1239,8 +1239,8 @@ const playlist = [
 
       try {
 
-        trackVideo.currentTime =
-          audio.currentTime;
+       trackVideo.currentTime =
+  Math.max(0, audio.currentTime - 0.08);
 
       } catch (error) {
 
