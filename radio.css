@@ -1978,9 +1978,4 @@ button {
    MUSIC VIDEO — CURVED SCREEN FIT
 ========================================================= */
 
-#radio-track-video {
-  transform: scaleX(1.035) scaleY(1.02);
-  transform-origin: center center;
 
-  border-radius: 4% / 7%;
-}
