@@ -13,53 +13,180 @@ document.addEventListener("DOMContentLoaded", () => {
      ELEMENTS
   ========================================================= */
 
-  const audio = document.getElementById("radio-audio");
+  const audio =
+    document.getElementById(
+      "radio-audio"
+    );
 
-  const playPause = document.getElementById("play-pause");
-  const previousTrack = document.getElementById("previous-track");
-  const nextTrack = document.getElementById("next-track");
+  const playPause =
+    document.getElementById(
+      "play-pause"
+    );
 
-  const volumeSlider = document.getElementById("volume-slider");
-  const volumeControl = document.getElementById("volume-control");
+  const previousTrack =
+    document.getElementById(
+      "previous-track"
+    );
 
-  const radioStatus = document.getElementById("radio-status");
+  const nextTrack =
+    document.getElementById(
+      "next-track"
+    );
 
-  const screenContent = document.getElementById("screen-content");
-  const screenButtons = document.querySelectorAll("[data-screen]");
-  const panelButtons = document.querySelectorAll(".panel-hotspot");
+  const volumeSlider =
+    document.getElementById(
+      "volume-slider"
+    );
 
-  const albumArt = document.getElementById("player-album-art");
-  const trackTitle = document.getElementById("player-track-title");
-  const trackArtist = document.getElementById("player-artist");
+  const volumeControl =
+    document.getElementById(
+      "volume-control"
+    );
+
+  const radioStatus =
+    document.getElementById(
+      "radio-status"
+    );
+
+  const screenContent =
+    document.getElementById(
+      "screen-content"
+    );
+
+  const screenSaver =
+    document.getElementById(
+      "radio-screen-saver"
+    );
+
+  const screenSaverImage =
+    document.getElementById(
+      "radio-screen-saver-image"
+    );
+
+  const screenButtons =
+    document.querySelectorAll(
+      "[data-screen]"
+    );
+
+  const panelButtons =
+    document.querySelectorAll(
+      ".panel-hotspot"
+    );
+
+  const albumArt =
+    document.getElementById(
+      "player-album-art"
+    );
+
+  const trackTitle =
+    document.getElementById(
+      "player-track-title"
+    );
+
+  const trackArtist =
+    document.getElementById(
+      "player-artist"
+    );
 
   let trackVideo = null;
-  let videoSyncing = false;
 
-  const spectrumCanvas = document.getElementById("spectrum-canvas");
-  const vuNeedle = document.getElementById("vu-needle");
+  let videoSyncing =
+    false;
 
-  const grFill = document.getElementById("gr-fill");
-  const grValue = document.getElementById("gr-value");
+  const spectrumCanvas =
+    document.getElementById(
+      "spectrum-canvas"
+    );
 
-  const dspStatus = document.getElementById("dsp-status");
+  const vuNeedle =
+    document.getElementById(
+      "vu-needle"
+    );
 
-  const mainstreamStatus = document.getElementById("mainstream-status");
-  const streamState = document.getElementById("stream-state");
+  const grFill =
+    document.getElementById(
+      "gr-fill"
+    );
 
-  const leftInfoClock = document.getElementById("left-info-clock");
-  const leftInfoDate = document.getElementById("left-info-date");
+  const grValue =
+    document.getElementById(
+      "gr-value"
+    );
 
-  const sportsName = document.getElementById("sports-name");
-  const sportsTeamA = document.getElementById("sports-team-a");
-  const sportsScoreA = document.getElementById("sports-score-a");
-  const sportsTeamB = document.getElementById("sports-team-b");
-  const sportsScoreB = document.getElementById("sports-score-b");
-  const sportsStatus = document.getElementById("sports-status");
+  const dspStatus =
+    document.getElementById(
+      "dsp-status"
+    );
 
-  const dowValue = document.getElementById("dow-value");
-  const dowPoints = document.getElementById("dow-points");
-  const dowPercent = document.getElementById("dow-percent");
-  const dowStatus = document.getElementById("dow-status");
+  const mainstreamStatus =
+    document.getElementById(
+      "mainstream-status"
+    );
+
+  const streamState =
+    document.getElementById(
+      "stream-state"
+    );
+
+  const leftInfoClock =
+    document.getElementById(
+      "left-info-clock"
+    );
+
+  const leftInfoDate =
+    document.getElementById(
+      "left-info-date"
+    );
+
+  const sportsName =
+    document.getElementById(
+      "sports-name"
+    );
+
+  const sportsTeamA =
+    document.getElementById(
+      "sports-team-a"
+    );
+
+  const sportsScoreA =
+    document.getElementById(
+      "sports-score-a"
+    );
+
+  const sportsTeamB =
+    document.getElementById(
+      "sports-team-b"
+    );
+
+  const sportsScoreB =
+    document.getElementById(
+      "sports-score-b"
+    );
+
+  const sportsStatus =
+    document.getElementById(
+      "sports-status"
+    );
+
+  const dowValue =
+    document.getElementById(
+      "dow-value"
+    );
+
+  const dowPoints =
+    document.getElementById(
+      "dow-points"
+    );
+
+  const dowPercent =
+    document.getElementById(
+      "dow-percent"
+    );
+
+  const dowStatus =
+    document.getElementById(
+      "dow-status"
+    );
 
 
   /* =========================================================
@@ -67,19 +194,34 @@ document.addEventListener("DOMContentLoaded", () => {
   ========================================================= */
 
   let audioContext = null;
+
   let sourceNode = null;
+
   let inputGain = null;
+
   let lowShelf = null;
+
   let presenceEQ = null;
+
   let compressor = null;
+
   let limiter = null;
+
   let analyser = null;
+
   let masterGain = null;
 
-  let audioGraphReady = false;
-  let animationFrame = null;
-  let statusTimer = null;
-  let activePreset = "music";
+  let audioGraphReady =
+    false;
+
+  let animationFrame =
+    null;
+
+  let statusTimer =
+    null;
+
+  let activePreset =
+    "music";
 
 
   /* =========================================================
@@ -197,48 +339,72 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    radioStatus.textContent = message;
+    radioStatus.textContent =
+      message;
 
-    window.clearTimeout(statusTimer);
+    window.clearTimeout(
+      statusTimer
+    );
 
-    statusTimer = window.setTimeout(() => {
+    statusTimer =
+      window.setTimeout(
+        () => {
 
-      radioStatus.textContent = "";
+          radioStatus.textContent =
+            "";
 
-    }, 2400);
+        },
+        2400
+      );
 
   }
 
 
   function formatLabel(value) {
 
-    return String(value || "")
+    return String(
+      value ||
+      ""
+    )
       .split("-")
-      .map((part) => {
+      .map(
+        (part) => {
 
-        return (
-          part.charAt(0).toUpperCase() +
-          part.slice(1)
-        );
+          return (
+            part.charAt(0)
+              .toUpperCase() +
+            part.slice(1)
+          );
 
-      })
+        }
+      )
       .join(" ");
 
   }
 
 
-  function setMainstreamState(onAir) {
+  function setMainstreamState(
+    onAir
+  ) {
 
-    if (!mainstreamStatus || !streamState) {
+    if (
+      !mainstreamStatus ||
+      !streamState
+    ) {
       return;
     }
 
-    const isOnAir = Boolean(onAir);
+    const isOnAir =
+      Boolean(
+        onAir
+      );
 
-    mainstreamStatus.classList.toggle(
-      "on-air",
-      isOnAir
-    );
+    mainstreamStatus
+      .classList
+      .toggle(
+        "on-air",
+        isOnAir
+      );
 
     streamState.textContent =
       isOnAir
@@ -257,16 +423,22 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
 
-  function setDSPState(active) {
+  function setDSPState(
+    active
+  ) {
 
     if (!dspStatus) {
       return;
     }
 
-    dspStatus.classList.toggle(
-      "active",
-      Boolean(active)
-    );
+    dspStatus
+      .classList
+      .toggle(
+        "active",
+        Boolean(
+          active
+        )
+      );
 
   }
 
@@ -279,7 +451,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     return Boolean(
       audio.currentSrc ||
-      audio.getAttribute("src")
+      audio.getAttribute(
+        "src"
+      )
     );
 
   }
@@ -289,7 +463,9 @@ document.addEventListener("DOMContentLoaded", () => {
      DSP PRESET CONTROL
   ========================================================= */
 
-  function applyPreset(name) {
+  function applyPreset(
+    name
+  ) {
 
     activePreset =
       presets[name]
@@ -301,7 +477,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const preset =
-      presets[activePreset];
+      presets[
+        activePreset
+      ];
 
     inputGain.gain.value =
       preset.input;
@@ -341,13 +519,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const rect =
-      spectrumCanvas.getBoundingClientRect();
+      spectrumCanvas
+        .getBoundingClientRect();
 
     const dpr =
       Math.max(
         1,
         Math.min(
-          window.devicePixelRatio || 1,
+          window.devicePixelRatio ||
+          1,
           2
         )
       );
@@ -356,7 +536,8 @@ document.addEventListener("DOMContentLoaded", () => {
       Math.max(
         1,
         Math.round(
-          rect.width * dpr
+          rect.width *
+          dpr
         )
       );
 
@@ -364,13 +545,16 @@ document.addEventListener("DOMContentLoaded", () => {
       Math.max(
         1,
         Math.round(
-          rect.height * dpr
+          rect.height *
+          dpr
         )
       );
 
     if (
-      spectrumCanvas.width !== width ||
-      spectrumCanvas.height !== height
+      spectrumCanvas.width !==
+        width ||
+      spectrumCanvas.height !==
+        height
     ) {
 
       spectrumCanvas.width =
@@ -418,17 +602,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
       sourceNode =
-        audioContext.createMediaElementSource(
-          audio
-        );
+        audioContext
+          .createMediaElementSource(
+            audio
+          );
 
 
       inputGain =
-        audioContext.createGain();
+        audioContext
+          .createGain();
 
 
       lowShelf =
-        audioContext.createBiquadFilter();
+        audioContext
+          .createBiquadFilter();
 
       lowShelf.type =
         "lowshelf";
@@ -438,7 +625,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
       presenceEQ =
-        audioContext.createBiquadFilter();
+        audioContext
+          .createBiquadFilter();
 
       presenceEQ.type =
         "peaking";
@@ -451,11 +639,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
       compressor =
-        audioContext.createDynamicsCompressor();
+        audioContext
+          .createDynamicsCompressor();
 
 
       limiter =
-        audioContext.createDynamicsCompressor();
+        audioContext
+          .createDynamicsCompressor();
 
       limiter.threshold.value =
         -1;
@@ -474,17 +664,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
       analyser =
-        audioContext.createAnalyser();
+        audioContext
+          .createAnalyser();
 
       analyser.fftSize =
         256;
 
-      analyser.smoothingTimeConstant =
+      analyser
+        .smoothingTimeConstant =
         0.78;
 
 
       masterGain =
-        audioContext.createGain();
+        audioContext
+          .createGain();
 
       masterGain.gain.value =
         volumeSlider
@@ -495,13 +688,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
       sourceNode
-        .connect(inputGain)
-        .connect(lowShelf)
-        .connect(presenceEQ)
-        .connect(compressor)
-        .connect(limiter)
-        .connect(analyser)
-        .connect(masterGain)
+        .connect(
+          inputGain
+        )
+        .connect(
+          lowShelf
+        )
+        .connect(
+          presenceEQ
+        )
+        .connect(
+          compressor
+        )
+        .connect(
+          limiter
+        )
+        .connect(
+          analyser
+        )
+        .connect(
+          masterGain
+        )
         .connect(
           audioContext.destination
         );
@@ -515,17 +722,18 @@ document.addEventListener("DOMContentLoaded", () => {
         true;
 
 
-      audioContext.addEventListener(
-        "statechange",
-        () => {
+      audioContext
+        .addEventListener(
+          "statechange",
+          () => {
 
-          setDSPState(
-            audioContext.state ===
-            "running"
-          );
+            setDSPState(
+              audioContext.state ===
+              "running"
+            );
 
-        }
-      );
+          }
+        );
 
 
       applyPreset(
@@ -565,7 +773,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (
       audioContext &&
       audioContext.state ===
-      "suspended"
+        "suspended"
     ) {
 
       try {
@@ -613,47 +821,53 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const frequencyData =
       new Uint8Array(
-        analyser.frequencyBinCount
+        analyser
+          .frequencyBinCount
       );
 
     const timeData =
       new Uint8Array(
-        analyser.fftSize
+        analyser
+          .fftSize
       );
 
-    const draw = () => {
+    const draw =
+      () => {
 
-      animationFrame =
-        window.requestAnimationFrame(
-          draw
+        animationFrame =
+          window
+            .requestAnimationFrame(
+              draw
+            );
+
+        drawSpectrum(
+          frequencyData
         );
 
-      drawSpectrum(
-        frequencyData
-      );
+        drawAnalogVU(
+          timeData
+        );
 
-      drawAnalogVU(
-        timeData
-      );
+        drawGainReduction();
 
-      drawGainReduction();
+        setDSPState(
+          Boolean(
+            audioContext &&
+            audioContext.state ===
+            "running"
+          )
+        );
 
-      setDSPState(
-        Boolean(
-          audioContext &&
-          audioContext.state ===
-          "running"
-        )
-      );
-
-    };
+      };
 
     draw();
 
   }
 
 
-  function drawSpectrum(frequencyData) {
+  function drawSpectrum(
+    frequencyData
+  ) {
 
     if (
       !spectrumCanvas ||
@@ -665,17 +879,19 @@ document.addEventListener("DOMContentLoaded", () => {
     resizeSpectrumCanvas();
 
     const ctx =
-      spectrumCanvas.getContext(
-        "2d"
-      );
+      spectrumCanvas
+        .getContext(
+          "2d"
+        );
 
     if (!ctx) {
       return;
     }
 
-    analyser.getByteFrequencyData(
-      frequencyData
-    );
+    analyser
+      .getByteFrequencyData(
+        frequencyData
+      );
 
     const width =
       spectrumCanvas.width;
@@ -691,12 +907,13 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
     const gradient =
-      ctx.createLinearGradient(
-        0,
-        height,
-        0,
-        0
-      );
+      ctx
+        .createLinearGradient(
+          0,
+          height,
+          0,
+          0
+        );
 
     gradient.addColorStop(
       0,
@@ -727,14 +944,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const gap =
       Math.max(
         1,
-        width * 0.0035
+        width *
+        0.0035
       );
 
     const barWidth =
       (
         width -
-        gap * (bars - 1)
-      ) / bars;
+        gap *
+        (
+          bars -
+          1
+        )
+      ) /
+      bars;
 
     for (
       let i = 0;
@@ -744,18 +967,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const dataIndex =
         Math.floor(
-          (i / bars) *
+          (
+            i /
+            bars
+          ) *
           frequencyData.length *
           0.72
         );
 
       const normalized =
-        frequencyData[dataIndex] /
+        frequencyData[
+          dataIndex
+        ] /
         255;
 
       const barHeight =
         Math.max(
-          height * 0.04,
+          height *
+          0.04,
           normalized *
           height *
           0.94
@@ -787,7 +1016,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
 
-  function drawAnalogVU(timeData) {
+  function drawAnalogVU(
+    timeData
+  ) {
 
     if (
       !vuNeedle ||
@@ -796,16 +1027,18 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    analyser.getByteTimeDomainData(
-      timeData
-    );
+    analyser
+      .getByteTimeDomainData(
+        timeData
+      );
 
     let sumSquares =
       0;
 
     for (
       let i = 0;
-      i < timeData.length;
+      i <
+        timeData.length;
       i += 1
     ) {
 
@@ -813,7 +1046,8 @@ document.addEventListener("DOMContentLoaded", () => {
         (
           timeData[i] -
           128
-        ) / 128;
+        ) /
+        128;
 
       sumSquares +=
         sample *
@@ -830,7 +1064,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const db =
       rms > 0
         ? 20 *
-          Math.log10(rms)
+          Math.log10(
+            rms
+          )
         : -60;
 
     const clampedDb =
@@ -846,7 +1082,8 @@ document.addEventListener("DOMContentLoaded", () => {
       (
         clampedDb +
         30
-      ) / 33;
+      ) /
+      33;
 
     const degrees =
       -42 +
@@ -885,7 +1122,8 @@ document.addEventListener("DOMContentLoaded", () => {
       (
         reduction /
         12
-      ) * 100;
+      ) *
+      100;
 
     grFill.style.height =
       `${percent.toFixed(1)}%`;
@@ -900,7 +1138,9 @@ document.addEventListener("DOMContentLoaded", () => {
      VOLUME HARDWARE
   ========================================================= */
 
-  function updateVolumeHardware(value) {
+  function updateVolumeHardware(
+    value
+  ) {
 
     if (!volumeControl) {
       return;
@@ -911,7 +1151,9 @@ document.addEventListener("DOMContentLoaded", () => {
         0,
         Math.min(
           100,
-          Number(value)
+          Number(
+            value
+          )
         )
       );
 
@@ -923,7 +1165,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const needleAngle =
       needleMin +
-      (percent / 100) *
+      (
+        percent /
+        100
+      ) *
       (
         needleMax -
         needleMin
@@ -931,19 +1176,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const centerAngle =
       -135 +
-      (percent / 100) *
+      (
+        percent /
+        100
+      ) *
       270 -
       5;
 
-    volumeControl.style.setProperty(
-      "--volume-angle",
-      `${needleAngle.toFixed(2)}deg`
-    );
+    volumeControl
+      .style
+      .setProperty(
+        "--volume-angle",
+        `${needleAngle.toFixed(2)}deg`
+      );
 
-    volumeControl.style.setProperty(
-      "--volume-center-angle",
-      `${centerAngle.toFixed(2)}deg`
-    );
+    volumeControl
+      .style
+      .setProperty(
+        "--volume-center-angle",
+        `${centerAngle.toFixed(2)}deg`
+      );
 
   }
 
@@ -956,7 +1208,8 @@ document.addEventListener("DOMContentLoaded", () => {
     audio.volume =
       Number(
         volumeSlider.value
-      ) / 100;
+      ) /
+      100;
 
 
     updateVolumeHardware(
@@ -964,45 +1217,49 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
 
-    volumeSlider.addEventListener(
-      "input",
-      async () => {
+    volumeSlider
+      .addEventListener(
+        "input",
+        async () => {
 
-        const value =
-          Number(
+          const value =
+            Number(
+              volumeSlider.value
+            ) /
+            100;
+
+
+          updateVolumeHardware(
             volumeSlider.value
-          ) / 100;
-
-
-        updateVolumeHardware(
-          volumeSlider.value
-        );
-
-
-        await resumeAudioContext();
-
-
-        if (
-          audioGraphReady &&
-          masterGain &&
-          audioContext
-        ) {
-
-          masterGain.gain.setTargetAtTime(
-            value,
-            audioContext.currentTime,
-            0.015
           );
 
-        } else {
 
-          audio.volume =
-            value;
+          await resumeAudioContext();
+
+
+          if (
+            audioGraphReady &&
+            masterGain &&
+            audioContext
+          ) {
+
+            masterGain
+              .gain
+              .setTargetAtTime(
+                value,
+                audioContext.currentTime,
+                0.015
+              );
+
+          } else {
+
+            audio.volume =
+              value;
+
+          }
 
         }
-
-      }
-    );
+      );
 
   }
 
@@ -1016,59 +1273,64 @@ document.addEventListener("DOMContentLoaded", () => {
     audio
   ) {
 
-    playPause.addEventListener(
-      "click",
-      async () => {
+    playPause
+      .addEventListener(
+        "click",
+        async () => {
 
-        if (!hasAudioSource()) {
+          if (
+            !hasAudioSource()
+          ) {
 
-          setMainstreamState(
-            false
-          );
+            setMainstreamState(
+              false
+            );
 
-          setStatus(
-            "Mainstream is off air — stream source not connected yet."
-          );
+            setStatus(
+              "Mainstream is off air — stream source not connected yet."
+            );
 
-          return;
-
-        }
-
-
-        await resumeAudioContext();
-
-
-        try {
-
-          if (audio.paused) {
-
-            await audio.play();
-
-          } else {
-
-            audio.pause();
+            return;
 
           }
 
-        } catch (error) {
 
-          console.error(
-            "AV Junki Radio playback error:",
-            error
-          );
+          await resumeAudioContext();
 
-          setMainstreamState(
-            false
-          );
 
-          setStatus(
-            "Unable to start the audio stream."
-          );
+          try {
+
+            if (
+              audio.paused
+            ) {
+
+              await audio.play();
+
+            } else {
+
+              audio.pause();
+
+            }
+
+          } catch (error) {
+
+            console.error(
+              "AV Junki Radio playback error:",
+              error
+            );
+
+            setMainstreamState(
+              false
+            );
+
+            setStatus(
+              "Unable to start the audio stream."
+            );
+
+          }
 
         }
-
-      }
-    );
+      );
 
 
     audio.addEventListener(
@@ -1111,16 +1373,12 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
 
-    audio.addEventListener(
-      "ended",
-      () => {
-
-        setMainstreamState(
-          false
-        );
-
-      }
-    );
+    /*
+      Track-end handling is owned by
+      the continuous playlist section
+      below so the station advances
+      without stopping.
+    */
 
 
     audio.addEventListener(
@@ -1137,91 +1395,224 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
 
-  if (mainstreamStatus) {
+  if (
+    mainstreamStatus
+  ) {
 
-    mainstreamStatus.addEventListener(
-      "click",
-      () => {
+    mainstreamStatus
+      .addEventListener(
+        "click",
+        () => {
 
-        setStatus(
-          audio &&
-          !audio.paused &&
-          hasAudioSource()
+          setStatus(
+            audio &&
+            !audio.paused &&
+            hasAudioSource()
 
-            ? "Mainstream is on air."
+              ? "Mainstream is on air."
 
-            : "Mainstream is off air."
-        );
+              : "Mainstream is off air."
+          );
 
-      }
-    );
+        }
+      );
 
   }
 
 
   /* =========================================================
-     TEST PLAYLIST / MUSIC VIDEO
+     CONTINUOUS 24/7 PLAYLIST / MUSIC VIDEO
   ========================================================= */
 
-const playlist = [
-  {
-    title: "Son of a Preacher Man",
-    artist: "Searvaxter Charles Gardner Jr.",
-  artwork: "assets/son-of-a-preacher-man-cover.png",
-    src: "assets/audio/son-of-a-preacher-man.mp3",
- video: "https://pub-2e91fa0475164dd8ab4072317209d9ac.r2.dev/Son-of-a-Preacher-Man.mp4",
-    preset: "music"
-  }
-];
-  let currentTrackIndex = 0;
+  const playlist = [
 
+    {
+      title:
+        "Son of a Preacher Man",
+
+      artist:
+        "Searvaxter Charles Gardner Jr.",
+
+      artwork:
+        "assets/son-of-a-preacher-man-cover.png",
+
+      src:
+        "assets/audio/son-of-a-preacher-man.mp3",
+
+      video:
+        "https://pub-2e91fa0475164dd8ab4072317209d9ac.r2.dev/Son-of-a-Preacher-Man.mp4",
+
+      preset:
+        "music"
+    }
+
+
+    /*
+      ADD MP3-ONLY TRACKS HERE LATER:
+
+      ,{
+        title: "Song Title",
+        artist: "Artist Name",
+        artwork: "assets/song-cover.png",
+        src: "assets/audio/song-file.mp3",
+        video: "",
+        preset: "music"
+      }
+
+      video: "" means the screen saver
+      remains visible while that MP3 plays.
+    */
+
+  ];
+
+
+  let currentTrackIndex =
+    0;
+
+
+  /* =========================================================
+     DEFAULT SCREEN SAVER
+  ========================================================= */
+
+  function showScreenSaver() {
+
+    if (
+      screenSaver
+    ) {
+
+      screenSaver
+        .classList
+        .remove(
+          "is-hidden"
+        );
+
+    }
+
+    if (
+      trackVideo
+    ) {
+
+      trackVideo
+        .style
+        .display =
+        "none";
+
+    }
+
+  }
+
+
+  function hideScreenSaver() {
+
+    if (
+      screenSaver
+    ) {
+
+      screenSaver
+        .classList
+        .add(
+          "is-hidden"
+        );
+
+    }
+
+  }
+
+
+  if (
+    screenSaverImage
+  ) {
+
+    screenSaverImage
+      .addEventListener(
+        "error",
+        () => {
+
+          /*
+            The actual Vegas / Henderson
+            screensaver image can be added later.
+
+            Until then, the CSS fallback
+            stays visible behind the beta badge.
+          */
+
+          screenSaverImage
+            .style
+            .display =
+            "none";
+
+        }
+      );
+
+  }
+
+
+  /* =========================================================
+     MUSIC VIDEO ENGINE
+  ========================================================= */
 
   function ensureTrackVideo() {
 
-    if (!screenContent) {
+    if (
+      !screenContent
+    ) {
       return null;
     }
 
-    if (trackVideo) {
+    if (
+      trackVideo
+    ) {
       return trackVideo;
     }
 
-    trackVideo = document.createElement("video");
-    trackVideo.id = "radio-track-video";
-    trackVideo.muted = true;
-    trackVideo.playsInline = true;
-    trackVideo.preload = "metadata";
+    trackVideo =
+      document
+        .createElement(
+          "video"
+        );
+
+    trackVideo.id =
+      "radio-track-video";
+
+    trackVideo.muted =
+      true;
+
+    trackVideo.playsInline =
+      true;
+
+    trackVideo.preload =
+      "metadata";
+
     trackVideo.setAttribute(
       "aria-label",
       "Now playing music video"
     );
 
-    Object.assign(
-      trackVideo.style,
-      {
-        width: "100%",
-        height: "100%",
-   objectFit: "cover",
-    display: "none",
-        background: "#000"
-      }
-    );
+    trackVideo
+      .style
+      .display =
+      "none";
 
-    screenContent.appendChild(
-      trackVideo
-    );
+    screenContent
+      .appendChild(
+        trackVideo
+      );
 
     return trackVideo;
 
   }
 
 
-  function syncVideoToAudio(force = false) {
+  function syncVideoToAudio(
+    force = false
+  ) {
 
     if (
       !audio ||
       !trackVideo ||
-      !trackVideo.src
+      !trackVideo.getAttribute(
+        "src"
+      )
     ) {
       return;
     }
@@ -1234,19 +1625,25 @@ const playlist = [
 
     if (
       force ||
-      difference > 0.35
+      difference >
+        0.35
     ) {
 
       try {
 
-       trackVideo.currentTime =
-Math.max(0, audio.currentTime - 0.07);
+        trackVideo.currentTime =
+          Math.max(
+            0,
+            audio.currentTime -
+            0.07
+          );
 
       } catch (error) {
 
         /*
-          Video metadata may not be ready yet.
-          The next sync will catch it.
+          Video metadata may not be
+          ready yet. The next sync pass
+          will catch it.
         */
 
       }
@@ -1263,10 +1660,18 @@ Math.max(0, audio.currentTime - 0.07);
 
     if (
       !video ||
-      !video.src
+      !video.getAttribute(
+        "src"
+      )
     ) {
+
+      showScreenSaver();
+
       return;
+
     }
+
+    hideScreenSaver();
 
     video.style.display =
       "block";
@@ -1281,7 +1686,7 @@ Math.max(0, audio.currentTime - 0.07);
     if (
       promise &&
       typeof promise.catch ===
-      "function"
+        "function"
     ) {
 
       promise.catch(
@@ -1295,7 +1700,9 @@ Math.max(0, audio.currentTime - 0.07);
 
   function pauseTrackVideo() {
 
-    if (!trackVideo) {
+    if (
+      !trackVideo
+    ) {
       return;
     }
 
@@ -1304,12 +1711,54 @@ Math.max(0, audio.currentTime - 0.07);
   }
 
 
+  function stopTrackVideo() {
+
+    if (
+      !trackVideo
+    ) {
+
+      showScreenSaver();
+
+      return;
+
+    }
+
+    trackVideo.pause();
+
+    try {
+
+      trackVideo.currentTime =
+        0;
+
+    } catch (error) {
+
+      /*
+        Metadata may already
+        be unloading.
+      */
+
+    }
+
+    trackVideo.style.display =
+      "none";
+
+    showScreenSaver();
+
+  }
+
+
+  /* =========================================================
+     PLAYLIST ENGINE
+  ========================================================= */
+
   function loadTrack(
     index,
     autoplay = false
   ) {
 
-    if (!playlist.length) {
+    if (
+      !playlist.length
+    ) {
       return;
     }
 
@@ -1350,7 +1799,7 @@ Math.max(0, audio.currentTime - 0.07);
               );
 
               setStatus(
-                "Press play to start the track."
+                "Press play to continue the station."
               );
 
             }
@@ -1363,36 +1812,51 @@ Math.max(0, audio.currentTime - 0.07);
   }
 
 
-  if (previousTrack) {
+  function playNextTrack() {
 
-    previousTrack.addEventListener(
-      "click",
-      () => {
-
-        loadTrack(
-          currentTrackIndex - 1,
-          true
-        );
-
-      }
+    loadTrack(
+      currentTrackIndex +
+      1,
+      true
     );
 
   }
 
 
-  if (nextTrack) {
+  if (
+    previousTrack
+  ) {
 
-    nextTrack.addEventListener(
-      "click",
-      () => {
+    previousTrack
+      .addEventListener(
+        "click",
+        () => {
 
-        loadTrack(
-          currentTrackIndex + 1,
-          true
-        );
+          loadTrack(
+            currentTrackIndex -
+            1,
+            true
+          );
 
-      }
-    );
+        }
+      );
+
+  }
+
+
+  if (
+    nextTrack
+  ) {
+
+    nextTrack
+      .addEventListener(
+        "click",
+        () => {
+
+          playNextTrack();
+
+        }
+      );
 
   }
 
@@ -1412,21 +1876,18 @@ Math.max(0, audio.currentTime - 0.07);
             button.dataset.screen ||
             "";
 
-          if (screenContent) {
+          if (
+            screenContent
+          ) {
 
-            screenContent.dataset.activeScreen =
+            screenContent
+              .dataset
+              .activeScreen =
               screen;
 
           }
 
-          if (trackVideo) {
-
-            trackVideo.style.display =
-              "none";
-
-            trackVideo.pause();
-
-          }
+          stopTrackVideo();
 
           setStatus(
             formatLabel(
@@ -1500,110 +1961,148 @@ Math.max(0, audio.currentTime - 0.07);
      PUBLIC TRACK LOADER
   ========================================================= */
 
-  window.setRadioTrack = ({
+  window.setRadioTrack =
+    ({
 
-    title =
-      "AV Junki Radio",
+      title =
+        "AV Junki Radio",
 
-    artist =
-      "Music Lives Here",
+      artist =
+        "Music Lives Here",
 
-    artwork =
-      "",
+      artwork =
+        "",
 
-    src =
-      "",
+      src =
+        "",
 
-    video =
-      "",
+      video =
+        "",
 
-    preset =
-      "music"
+      preset =
+        "music"
 
-  } = {}) => {
-
-
-    if (trackTitle) {
-
-      trackTitle.textContent =
-        title;
-
-    }
+    } = {}) => {
 
 
-    if (trackArtist) {
+      if (
+        trackTitle
+      ) {
 
-      trackArtist.textContent =
-        artist;
-
-    }
-
-
-    if (albumArt) {
-
-      albumArt.style.backgroundImage =
-        artwork
-          ? `url("${artwork}")`
-          : "none";
-
-    }
-
-
-    applyPreset(
-      preset
-    );
-
-
-    if (
-      audio &&
-      src
-    ) {
-
-      audio.pause();
-
-      audio.src =
-        src;
-
-      audio.load();
-
-      setMainstreamState(
-        false
-      );
-
-    }
-
-
-    const videoElement =
-      ensureTrackVideo();
-
-    if (videoElement) {
-
-      videoElement.pause();
-
-      videoElement.removeAttribute(
-        "src"
-      );
-
-      videoElement.load();
-
-      videoElement.style.display =
-        "none";
-
-      if (video) {
-
-        videoElement.src =
-          video;
-
-        videoElement.load();
+        trackTitle.textContent =
+          title;
 
       }
 
-    }
 
-  };
+      if (
+        trackArtist
+      ) {
+
+        trackArtist.textContent =
+          artist;
+
+      }
 
 
-  if (audio) {
+      if (
+        albumArt
+      ) {
+
+        albumArt
+          .style
+          .backgroundImage =
+          artwork
+
+            ? `url("${artwork}")`
+
+            : "none";
+
+      }
+
+
+      applyPreset(
+        preset
+      );
+
+
+      if (
+        audio &&
+        src
+      ) {
+
+        audio.pause();
+
+        audio.src =
+          src;
+
+        audio.load();
+
+        setMainstreamState(
+          false
+        );
+
+      }
+
+
+      const videoElement =
+        ensureTrackVideo();
+
+
+      if (
+        videoElement
+      ) {
+
+        videoElement.pause();
+
+        videoElement
+          .removeAttribute(
+            "src"
+          );
+
+        videoElement.load();
+
+        videoElement
+          .style
+          .display =
+          "none";
+
+
+        if (
+          video
+        ) {
+
+          videoElement.src =
+            video;
+
+          videoElement.load();
+
+        }
+
+      }
+
+
+      /*
+        Every newly loaded song
+        begins with the screen saver.
+
+        If that song has a video,
+        the play event below replaces
+        the screen saver with the video.
+      */
+
+      showScreenSaver();
+
+    };
+
+
+  /* =========================================================
+     AUDIO / VIDEO EVENTS
+  ========================================================= */
+
+  if (
+    audio
+  ) {
 
     audio.addEventListener(
       "play",
@@ -1641,7 +2140,9 @@ Math.max(0, audio.currentTime - 0.07);
       "timeupdate",
       () => {
 
-        if (videoSyncing) {
+        if (
+          videoSyncing
+        ) {
           return;
         }
 
@@ -1659,11 +2160,26 @@ Math.max(0, audio.currentTime - 0.07);
     );
 
 
+    /*
+      THIS IS THE CONTINUOUS
+      24-HOUR LOOP.
+
+      When a song finishes:
+      1. Its video is removed.
+      2. The screen saver returns.
+      3. The next MP3 loads.
+      4. Playback starts automatically.
+      5. At the last track, modulo math
+         wraps back to track number one.
+    */
+
     audio.addEventListener(
       "ended",
       () => {
 
-        pauseTrackVideo();
+        stopTrackVideo();
+
+        playNextTrack();
 
       }
     );
@@ -1687,22 +2203,32 @@ Math.max(0, audio.currentTime - 0.07);
     const now =
       new Date();
 
+
     leftInfoClock.textContent =
       now.toLocaleTimeString(
         [],
         {
-          hour: "numeric",
-          minute: "2-digit"
+          hour:
+            "numeric",
+
+          minute:
+            "2-digit"
         }
       );
+
 
     leftInfoDate.textContent =
       now.toLocaleDateString(
         [],
         {
-          weekday: "long",
-          month: "long",
-          day: "numeric"
+          weekday:
+            "long",
+
+          month:
+            "long",
+
+          day:
+            "numeric"
         }
       );
 
@@ -1713,10 +2239,14 @@ Math.max(0, audio.currentTime - 0.07);
      LEFT INFO — SPORTS
   ========================================================= */
 
-  function showSport(index) {
+  function showSport(
+    index
+  ) {
 
     const sport =
-      sportsRotation[index];
+      sportsRotation[
+        index
+      ];
 
     if (
       !sport ||
@@ -1902,7 +2432,18 @@ Math.max(0, audio.currentTime - 0.07);
   updateDowDisplay();
 
 
-  /* Load first test track without autoplaying. */
+  /*
+    The screen saver is what visitors
+    see before they press Play.
+
+    Browsers require the first audio
+    playback to be initiated by the
+    visitor. After that first Play,
+    the playlist advances continuously.
+  */
+
+  showScreenSaver();
+
 
   loadTrack(
     0,
