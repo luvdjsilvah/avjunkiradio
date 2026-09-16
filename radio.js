@@ -1424,47 +1424,108 @@ document.addEventListener("DOMContentLoaded", () => {
      CONTINUOUS 24/7 PLAYLIST / MUSIC VIDEO
   ========================================================= */
 
-  const playlist = [
+   const playlist = [
 
     {
-      title:
-        "Son of a Preacher Man",
+      title: "Son of a Preacher Man",
+      artist: "Searvaxter Charles Gardner Jr.",
+      artwork: "assets/son-of-a-preacher-man-cover.png",
+      src: "assets/audio/son-of-a-preacher-man.mp3",
+      video: "https://pub-2e91fa0475164dd8ab4072317209d9ac.r2.dev/Son-of-a-Preacher-Man.mp4",
+      preset: "music"
+    },
 
-      artist:
-        "Searvaxter Charles Gardner Jr.",
+    {
+      title: "Flo",
+      artist: "DJ Silvah",
+      artwork: "",
+      src: "assets/audio/01-flo.mp3",
+      video: "",
+      preset: "music"
+    },
 
-      artwork:
-        "assets/son-of-a-preacher-man-cover.png",
+    {
+      title: "Mist",
+      artist: "DJ Silvah",
+      artwork: "",
+      src: "assets/audio/02-mist.mp3",
+      video: "",
+      preset: "music"
+    },
 
-      src:
-        "assets/audio/son-of-a-preacher-man.mp3",
+    {
+      title: "Kiss",
+      artist: "DJ Silvah",
+      artwork: "",
+      src: "assets/audio/03-kiss.mp3",
+      video: "",
+      preset: "music"
+    },
 
-      video:
-        "https://pub-2e91fa0475164dd8ab4072317209d9ac.r2.dev/Son-of-a-Preacher-Man.mp4",
+    {
+      title: "London Poppy",
+      artist: "DJ Silvah",
+      artwork: "",
+      src: "assets/audio/04-london-poppy.mp3",
+      video: "",
+      preset: "music"
+    },
 
-      preset:
-        "music"
+    {
+      title: "Elle",
+      artist: "DJ Silvah",
+      artwork: "",
+      src: "assets/audio/05-elle.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    {
+      title: "New York Moods",
+      artist: "DJ Silvah",
+      artwork: "",
+      src: "assets/audio/06-new-york-moods.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    {
+      title: "J-Hollands",
+      artist: "DJ Silvah",
+      artwork: "",
+      src: "assets/audio/07-j-hollands.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    {
+      title: "Tipsy",
+      artist: "DJ Silvah",
+      artwork: "",
+      src: "assets/audio/08-tipsy.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    {
+      title: "Faded",
+      artist: "DJ Silvah",
+      artwork: "",
+      src: "assets/audio/09-faded.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    {
+      title: "Sex Me Next",
+      artist: "DJ Silvah",
+      artwork: "",
+      src: "assets/audio/10-sex-me-next.mp3",
+      video: "",
+      preset: "music"
     }
 
-
-    /*
-      ADD MP3-ONLY TRACKS HERE LATER:
-
-      ,{
-        title: "Song Title",
-        artist: "Artist Name",
-        artwork: "assets/song-cover.png",
-        src: "assets/audio/song-file.mp3",
-        video: "",
-        preset: "music"
-      }
-
-      video: "" means the screen saver
-      remains visible while that MP3 plays.
-    */
-
   ];
-
 
   let currentTrackIndex =
     0;
