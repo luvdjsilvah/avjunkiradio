@@ -978,7 +978,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const minBin = 1;
 const maxBin =
   Math.floor(
-    frequencyData.length * 0.42
+    frequencyData.length * 0.65
   );
 
 const normalizedPosition =
