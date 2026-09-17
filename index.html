@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>AV Junki Radio</title>
+
+  <meta
+    name="description"
+    content="AV Junki Radio — 24/7 music, podcasts, live audio, events, artists and interactive radio."
+  />
+
+  <link
+    rel="stylesheet"
+    href="radio.css?v=9"
+  />
+</head>
+
+
+<body>
+
+  <main id="radio-app">
+
+    <section id="radio-hero">
+
+
+      <!-- =====================================================
+           MASTER HERO IMAGE
+      ====================================================== -->
+
+      <img
+        id="radio-hero-image"
+        src="assets/Hero-Radio.webp"
+        alt="AV Junki Radio virtual studio"
+      />
+
+      <img
+        id="radio-hero-image-next"
+        src="assets/Hero-Radio.webp"
+        alt=""
+        aria-hidden="true"
+      />
+
+
+      <!-- =====================================================
+           CEILING GLOBE
+      ====================================================== -->
+
+      <div
+        id="ceiling-globe"
+        class="interactive-layer"
+        aria-hidden="true"
+      ></div>
+
+
+      <!-- =====================================================
+           MAIN NAVIGATION
+      ====================================================== -->
+
+      <nav
+        id="radio-navigation"
+        aria-label="AV Junki Radio navigation"
+      >
+
+        <a
+          id="nav-home"
+          class="nav-hotspot"
+          href="index.html"
+          aria-label="Home"
+        >
+          Home
+        </a>
+
+
+        <a
+          id="nav-radio"
+          class="nav-hotspot"
+          href="index.html"
+          aria-label="Radio"
+        >
+          Radio
+        </a>
+
+
+        <button
+          id="nav-podcast"
+          class="nav-hotspot"
+          type="button"
+          data-screen="podcasts"
+          aria-label="Podcasts"
+        >
+          Podcasts
+        </button>
+
+
+        <button
+          id="nav-events"
+          class="nav-hotspot"
+          type="button"
+          data-screen="events"
+          aria-label="Events"
+        >
+          Events
+        </button>
+
+
+        <button
+          id="nav-news"
+          class="nav-hotspot"
+          type="button"
+          data-screen="news"
+          aria-label="News"
+        >
+          News
+        </button>
+
+
+        <button
+          id="nav-shop"
+          class="nav-hotspot"
+          type="button"
+          data-screen="shop"
+          aria-label="Shop"
+        >
+          Shop
+        </button>
+
+
+        <button
+          id="nav-community"
+          class="nav-hotspot"
+          type="button"
+          data-screen="community"
+          aria-label="Community"
+        >
+          Community
+        </button>
+
+
+        <button
+          id="nav-advertise"
+          class="nav-hotspot"
+          type="button"
+          data-screen="advertise"
+          aria-label="Advertise"
+        >
+          Advertise
+        </button>
+
+
+        <button
+          id="nav-contact"
+          class="nav-hotspot"
+          type="button"
+          data-screen="contact"
+          aria-label="Contact"
+        >
+          Contact
+        </button>
+
+
+        <button
+          id="nav-search"
+          class="nav-hotspot"
+          type="button"
+          data-screen="search"
+          aria-label="Search"
+        >
+          Search
+        </button>
+
+
+        <button
+          id="nav-inquiry"
+          class="nav-hotspot"
+          type="button"
+          data-screen="inquiry"
+          aria-label="Inquiry"
+        >
+          Inquiry
+        </button>
+
+
+        <button
+          id="nav-about"
+          class="nav-hotspot"
+          type="button"
+          data-screen="about"
+          aria-label="About"
+        >
+          About
+        </button>
+
+      </nav>
+
+
+      <!-- =====================================================
+           CENTER MEDIA SCREEN
+      ====================================================== -->
+
+      <section
+        id="center-screen"
+        aria-label="AV Junki Radio information screen"
+      >
+        <div id="screen-content">
+
+          <!-- DEFAULT SCREEN SAVER -->
+
+          <div
+            id="radio-screen-saver"
+            aria-label="AV Junki Radio beta screen"
+          >
+
+            <img
+              id="radio-screen-saver-image"
+              src="assets/radio-screensaver.jpg"
+              alt=""
+              aria-hidden="true"
+            />
+
+            <div
+              id="radio-screen-saver-overlay"
+              aria-hidden="true"
+            ></div>
+
+            <div id="radio-beta-badge">
+
+              <span id="radio-beta-title">
+                BETA TESTING
+              </span>
+
+              <span id="radio-beta-subtitle">
+                WORK IN PROGRESS
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+
+      <!-- =====================================================
+           MUSIC GENRE PANELS
+      ====================================================== -->
+
+      <button
+        class="panel-hotspot"
+        id="hip-hop-panel"
+        type="button"
+        data-channel="hip-hop"
+        aria-label="Play Hip Hop"
+      ></button>
+
+
+      <button
+        class="panel-hotspot"
+        id="rnb-panel"
+        type="button"
+        data-channel="rnb"
+        aria-label="Play R&B"
+      ></button>
+
+
+      <button
+        class="panel-hotspot"
+        id="house-panel"
+        type="button"
+        data-channel="house"
+        aria-label="Play House"
+      ></button>
+
+
+      <button
+        class="panel-hotspot"
+        id="reggae-panel"
+        type="button"
+        data-channel="reggae"
+        aria-label="Play Reggae"
+      ></button>
+
+
+      <!-- =====================================================
+           PODCAST / LIVE / GOSPEL PANELS
+      ====================================================== -->
+
+      <button
+        class="panel-hotspot"
+        id="podcast-panel"
+        type="button"
+        data-channel="podcast"
+        aria-label="Open Podcasts"
+      ></button>
+
+
+      <button
+        class="panel-hotspot"
+        id="live-1-panel"
+        type="button"
+        data-channel="live-1"
+        aria-label="Open Live 1"
+      ></button>
+
+
+      <button
+        class="panel-hotspot"
+        id="live-2-panel"
+        type="button"
+        data-channel="live-2"
+        aria-label="Open Live 2"
+      ></button>
+
+
+      <button
+        class="panel-hotspot"
+        id="gospel-panel"
+        type="button"
+        data-channel="gospel"
+        aria-label="Play Gospel"
+      ></button>
+
+
+      <!-- =====================================================
+           VIRTUAL HOST
+      ====================================================== -->
+
+      <section
+        id="virtual-host"
+        aria-label="AV Junki Radio virtual welcome"
+      >
+
+        <div id="virtual-host-character"></div>
+
+        <button
+          id="skip-welcome"
+          type="button"
+        >
+          Skip Welcome
+        </button>
+
+      </section>
+
+
+      <!-- =====================================================
+           BROADCAST PLAYER
+      ====================================================== -->
+
+      <section
+        id="broadcast-player"
+        aria-label="AV Junki Radio broadcast player"
+      >
+
+
+        <!-- ===================================================
+             LEFT INFORMATION DISPLAY
+        ==================================================== -->
+
+        <div
+          id="left-info-display"
+          aria-hidden="true"
+        >
+
+          <img
+            id="left-info-logo"
+            src="assets/av-junki-radio-glass-logo.png"
+            alt=""
+          />
+
+
+          <!-- TIME / DATE -->
+
+          <div id="left-info-time">
+
+            <div id="left-info-clock">
+              8:25 PM
+            </div>
+
+            <div id="left-info-date">
+              Friday, September 11
+            </div>
+
+          </div>
+
+
+          <!-- WEATHER -->
+
+          <div id="left-info-weather">
+
+            <div id="weather-location">
+              HENDERSON, NV
+            </div>
+
+            <div id="weather-main">
+
+              <div id="weather-temp">
+                84°
+              </div>
+
+              <div id="weather-details">
+
+                <div id="weather-condition">
+                  CLEAR
+                </div>
+
+                <div id="weather-range">
+                  H 89° &nbsp; L 68°
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <!-- SPORTS -->
+
+          <div id="left-info-sports">
+
+            <div id="sports-name">
+              FOOTBALL
+            </div>
+
+            <div id="sports-matchup">
+
+              <div id="sports-team-a">
+                LV
+              </div>
+
+              <div id="sports-score-a">
+                --
+              </div>
+
+              <div id="sports-divider">
+                -
+              </div>
+
+              <div id="sports-team-b">
+                DAL
+              </div>
+
+              <div id="sports-score-b">
+                --
+              </div>
+
+            </div>
+
+            <div id="sports-status">
+              PLACEHOLDER
+            </div>
+
+          </div>
+
+
+          <!-- DOW JONES -->
+
+          <div id="left-info-dow">
+
+            <div id="dow-name">
+              DOW JONES
+            </div>
+
+            <div id="dow-value">
+              --,---.--
+            </div>
+
+            <div id="dow-change">
+
+              <span id="dow-points">
+                --
+              </span>
+
+              <span id="dow-percent">
+                (--.--%)
+              </span>
+
+            </div>
+
+            <div id="dow-status">
+              MARKET CLOSED
+            </div>
+
+          </div>
+
+
+          <!-- TRAFFIC -->
+
+          <div id="left-info-traffic">
+
+            <div id="traffic-title">
+              TRAFFIC REPORT
+            </div>
+
+            <div id="traffic-route">
+              HENDERSON / LAS VEGAS
+            </div>
+
+            <div id="traffic-condition">
+              NO MAJOR DELAYS
+            </div>
+
+            <div id="traffic-status">
+              TRAFFIC UPDATE
+            </div>
+
+          </div>
+
+
+          <!-- WORLD NEWS -->
+
+          <div id="left-info-news">
+
+            <div id="news-title">
+              WORLD NEWS
+            </div>
+
+            <div id="news-headline">
+              MAJOR GLOBAL HEADLINE
+            </div>
+
+            <div id="news-status">
+              NEWS UPDATE
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- ===================================================
+             ALBUM ART
+        ==================================================== -->
+
+        <div id="player-album-art"></div>
+
+
+        <!-- ===================================================
+             TRACK INFORMATION
+        ==================================================== -->
+
+        <div id="player-track-info">
+
+          <div id="player-track-title">
+            AV Junki Radio
+          </div>
+
+          <div id="player-artist">
+            Music Lives Here
+          </div>
+
+        </div>
+
+
+        <!-- ===================================================
+             SPECTRUM ANALYZER
+        ==================================================== -->
+
+        <div id="spectrum-wrap">
+
+          <canvas
+            id="spectrum-canvas"
+            aria-label="Audio spectrum analyzer"
+          ></canvas>
+
+        </div>
+
+
+        <!-- ===================================================
+             ANALOG VU METER
+        ==================================================== -->
+
+        <div id="analog-vu">
+
+          <img
+            id="vu-face"
+            src="assets/vu-meter.png"
+            alt="Analog VU meter"
+          />
+
+          <div id="vu-needle"></div>
+
+        </div>
+
+
+        <!-- ===================================================
+             GAIN REDUCTION METER
+        ==================================================== -->
+
+        <div
+          id="gr-meter-wrap"
+          aria-label="Gain reduction meter"
+        >
+
+          <div id="gr-label">
+            GR
+          </div>
+
+          <div id="gr-meter">
+            <div id="gr-fill"></div>
+          </div>
+
+          <div id="gr-value">
+            0 dB
+          </div>
+
+        </div>
+
+
+        <!-- ===================================================
+             DSP STATUS
+        ==================================================== -->
+
+        <div
+          id="dsp-status"
+          aria-label="DSP status"
+        >
+
+          <span
+            id="dsp-light"
+            aria-hidden="true"
+          ></span>
+
+          <span id="dsp-text">
+            DSP
+          </span>
+
+        </div>
+
+
+        <!-- ===================================================
+             TRANSPORT CONTROLS
+        ==================================================== -->
+
+        <div id="player-controls">
+
+          <button
+            id="previous-track"
+            type="button"
+            aria-label="Previous track"
+          >
+            ◀
+          </button>
+
+
+          <button
+            id="play-pause"
+            type="button"
+            aria-label="Play"
+          >
+            ▶
+          </button>
+
+
+          <button
+            id="next-track"
+            type="button"
+            aria-label="Next track"
+          >
+            ▶
+          </button>
+
+        </div>
+
+
+        <!-- ===================================================
+             MAINSTREAM STATUS
+        ==================================================== -->
+
+        <button
+          id="mainstream-status"
+          type="button"
+          aria-label="Mainstream status: Off Air"
+        >
+
+          <span id="mainstream-label">
+        <span id="mainstream-label">
+  LIVE STREAM
+</span>
+          </span>
+
+          <span
+            id="mainstream-rule"
+            aria-hidden="true"
+          ></span>
+
+          <span id="stream-state">
+            OFF AIR
+          </span>
+
+          <span
+            id="stream-light"
+            aria-hidden="true"
+          ></span>
+
+        </button>
+
+
+        <!-- ===================================================
+             MASTER VOLUME
+        ==================================================== -->
+
+        <div id="volume-control">
+
+          <img
+            id="volume-vu-face"
+            src="assets/av-junki-volume-vu.png"
+            alt="Volume VU control"
+          />
+
+          <img
+            id="volume-knob-center"
+            src="assets/volume-knob-center.png"
+            alt=""
+            aria-hidden="true"
+          />
+
+          <label
+            for="volume-slider"
+            class="sr-only"
+          >
+            Volume
+          </label>
+
+          <input
+            id="volume-slider"
+            type="range"
+            min="0"
+            max="100"
+            value="80"
+            aria-label="Volume"
+          />
+
+        </div>
+
+
+        <!-- ===================================================
+             RADIO AUDIO ENGINE
+        ==================================================== -->
+
+        <audio
+          id="radio-audio"
+          preload="metadata"
+          crossorigin="anonymous"
+        ></audio>
+
+      </section>
+
+
+      <!-- =====================================================
+           STATUS MESSAGE
+      ====================================================== -->
+
+      <div
+        id="radio-status"
+        role="status"
+        aria-live="polite"
+      ></div>
+
+
+    </section>
+
+  </main>
+
+
+  <!-- =========================================================
+       RADIO JAVASCRIPT
+  ========================================================== -->
+
+  <script src="radio.js?v=8"></script>
+
+</body>
+
+</html>
