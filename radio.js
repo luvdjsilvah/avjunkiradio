@@ -975,16 +975,23 @@ document.addEventListener("DOMContentLoaded", () => {
       i += 1
     ) {
 
-      const dataIndex =
-        Math.floor(
-          (
-            i /
-            bars
-          ) *
-          frequencyData.length *
-          1.0
-        );
+    const minBin = 1;
+const maxBin =
+  Math.floor(
+    frequencyData.length * 0.42
+  );
 
+const normalizedPosition =
+  i / (bars - 1);
+
+const dataIndex =
+  Math.floor(
+    minBin *
+    Math.pow(
+      maxBin / minBin,
+      normalizedPosition
+    )
+  );
       const normalized =
         frequencyData[
           dataIndex
