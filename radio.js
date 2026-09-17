@@ -1462,7 +1462,7 @@ const heroSources = {
     flo: {
       title: "Flo",
       artist: "DJ Silvah",
-      artwork: "",
+    artwork: "assets/Flo album art.png",
       src: "assets/audio/01-flo.mp3",
       video: "",
       preset: "music"
@@ -1471,7 +1471,7 @@ const heroSources = {
     mist: {
       title: "Mist",
       artist: "DJ Silvah",
-      artwork: "",
+    artwork: "assets/Mist album art.png",
       src: "assets/audio/02-mist.mp3",
       video: "",
       preset: "music"
@@ -1480,7 +1480,7 @@ const heroSources = {
     kiss: {
       title: "Kiss",
       artist: "DJ Silvah",
-      artwork: "",
+     artwork: "assets/Kiss album art.png",
       src: "assets/audio/03-kiss.mp3",
       video: "",
       preset: "music"
@@ -1489,7 +1489,7 @@ const heroSources = {
     "london-poppy": {
       title: "London Poppy",
       artist: "DJ Silvah",
-      artwork: "",
+      artwork: "assets/London Poppy album art.png",
       src: "assets/audio/04-london-poppy.mp3",
       video: "",
       preset: "music"
@@ -1498,7 +1498,7 @@ const heroSources = {
     elle: {
       title: "Elle",
       artist: "DJ Silvah",
-      artwork: "",
+      artwork: "assets/Elle Album Art.png",
       src: "assets/audio/05-elle.mp3",
       video: "",
       preset: "music"
@@ -1507,7 +1507,7 @@ const heroSources = {
     "new-york-moods": {
       title: "New York Moods",
       artist: "DJ Silvah",
-      artwork: "",
+     artwork: "assets/Ney York Moods album Art.png",
       src: "assets/audio/06-new-york-moods.mp3",
       video: "",
       preset: "music"
@@ -1516,7 +1516,7 @@ const heroSources = {
     "j-hollands": {
       title: "J-Hollands",
       artist: "DJ Silvah",
-      artwork: "",
+     artwork: "assets/J-Jollands Album Art.png",
       src: "assets/audio/07-j-hollands.mp3",
       video: "",
       preset: "music"
