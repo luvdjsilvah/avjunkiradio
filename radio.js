@@ -1482,169 +1482,283 @@ const heroSources = {
 
 };
 
-  const trackLibrary = {
+const trackLibrary = {
 
-    "son-of-a-preacher-man": {
-      title: "Son of a Preacher Man",
-      artist: "Searvaxter Charles Gardner Jr.",
-      artwork: "assets/son-of-a-preacher-man-cover.png",
-      src: "assets/audio/son-of-a-preacher-man.mp3",
-      video: "https://pub-2e91fa0475164dd8ab4072317209d9ac.r2.dev/Son-of-a-Preacher-Man.mp4",
-      preset: "music"
-    },
+  "son-of-a-preacher-man": {
+    title: "Son of a Preacher Man",
+    artist: "Searvaxter Charles Gardner Jr.",
+    artwork: "assets/son-of-a-preacher-man-cover.png",
+    src: "assets/audio/son-of-a-preacher-man.mp3",
+    video: "https://pub-2e91fa0475164dd8ab4072317209d9ac.r2.dev/Son-of-a-Preacher-Man.mp4",
+    preset: "music"
+  },
 
-    flo: {
-      title: "Flo",
-      artist: "DJ Silvah",
+  flo: {
+    title: "Flo",
+    artist: "DJ Silvah",
     artwork: "assets/Flo album art.png",
-      src: "assets/audio/01-flo.mp3",
-      video: "",
-      preset: "music"
-    },
+    src: "assets/audio/01-flo.mp3",
+    video: "",
+    preset: "music"
+  },
 
-    mist: {
-      title: "Mist",
-      artist: "DJ Silvah",
+  mist: {
+    title: "Mist",
+    artist: "DJ Silvah",
     artwork: "assets/Mist album art.png",
-      src: "assets/audio/02-mist.mp3",
-      video: "",
-      preset: "music"
-    },
+    src: "assets/audio/02-mist.mp3",
+    video: "",
+    preset: "music"
+  },
 
-    kiss: {
-      title: "Kiss",
-      artist: "DJ Silvah",
-     artwork: "assets/Kiss album art.png",
-      src: "assets/audio/03-kiss.mp3",
-      video: "",
-      preset: "music"
-    },
+  kiss: {
+    title: "Kiss",
+    artist: "DJ Silvah",
+    artwork: "assets/Kiss album art.png",
+    src: "assets/audio/03-kiss.mp3",
+    video: "",
+    preset: "music"
+  },
 
-    "london-poppy": {
-      title: "London Poppy",
-      artist: "DJ Silvah",
-      artwork: "assets/London Poppy album art.png",
-      src: "assets/audio/04-london-poppy.mp3",
-      video: "",
-      preset: "music"
-    },
+  "london-poppy": {
+    title: "London Poppy",
+    artist: "DJ Silvah",
+    artwork: "assets/London Poppy album art.png",
+    src: "assets/audio/04-london-poppy.mp3",
+    video: "",
+    preset: "music"
+  },
 
-    elle: {
-      title: "Elle",
-      artist: "DJ Silvah",
-      artwork: "assets/Elle Album Art.png",
-      src: "assets/audio/05-elle.mp3",
-      video: "",
-      preset: "music"
-    },
+  elle: {
+    title: "Elle",
+    artist: "DJ Silvah",
+    artwork: "assets/Elle Album Art.png",
+    src: "assets/audio/05-elle.mp3",
+    video: "",
+    preset: "music"
+  },
 
-    "new-york-moods": {
-      title: "New York Moods",
-      artist: "DJ Silvah",
-     artwork: "assets/Ney York Moods album Art.png",
-      src: "assets/audio/06-new-york-moods.mp3",
-      video: "",
-      preset: "music"
-    },
+  "new-york-moods": {
+    title: "New York Moods",
+    artist: "DJ Silvah",
+    artwork: "assets/Ney York Moods album Art.png",
+    src: "assets/audio/06-new-york-moods.mp3",
+    video: "",
+    preset: "music"
+  },
 
-    "j-hollands": {
-      title: "J-Hollands",
-      artist: "DJ Silvah",
-     artwork: "assets/J-Jollands Album Art.png",
-      src: "assets/audio/07-j-hollands.mp3",
-      video: "",
-      preset: "music"
-    },
+  "j-hollands": {
+    title: "J-Hollands",
+    artist: "DJ Silvah",
+    artwork: "assets/J-Jollands Album Art.png",
+    src: "assets/audio/07-j-hollands.mp3",
+    video: "",
+    preset: "music"
+  },
 
-    tipsy: {
-      title: "Tipsy",
-      artist: "DJ Silvah",
-      artwork: "",
-      src: "assets/audio/08-tipsy.mp3",
-      video: "",
-      preset: "music"
-    },
+  tipsy: {
+    title: "Tipsy",
+    artist: "DJ Silvah",
+    artwork: "",
+    src: "assets/audio/08-tipsy.mp3",
+    video: "",
+    preset: "music"
+  },
 
-    faded: {
-      title: "Faded",
-      artist: "DJ Silvah",
-      artwork: "",
-      src: "assets/audio/09-faded.mp3",
-      video: "",
-      preset: "music"
-    },
+  faded: {
+    title: "Faded",
+    artist: "DJ Silvah",
+    artwork: "",
+    src: "assets/audio/09-faded.mp3",
+    video: "",
+    preset: "music"
+  },
 
-    "sex-me-next": {
-      title: "Sex Me Next",
-      artist: "DJ Silvah",
-      artwork: "",
-      src: "assets/audio/10-sex-me-next.mp3",
-      video: "",
-      preset: "music"
-    }
+  "sex-me-next": {
+    title: "Sex Me Next",
+    artist: "DJ Silvah",
+    artwork: "",
+    src: "assets/audio/10-sex-me-next.mp3",
+    video: "",
+    preset: "music"
+  },
 
-  };
+  "every-version-of-me": {
+    title: "Every Version of Me",
+    artist: "DJ Silvah",
+    artwork: "assets/11-every-version-of-me-cover.png",
+    src: "assets/audio/11-every-version-of-me.mp3",
+    video: "",
+    preset: "music"
+  },
+
+  "cajun-drummer": {
+    title: "Cajun Drummer",
+    artist: "DJ Silvah",
+    artwork: "assets/12-cajun-drummer-cover.png",
+    src: "assets/audio/12-cajun-drummer.mp3",
+    video: "",
+    preset: "music"
+  },
+
+  java: {
+    title: "Java",
+    artist: "DJ Silvah",
+    artwork: "assets/13-java-cover.png",
+    src: "assets/audio/13-java.mp3",
+    video: "",
+    preset: "music"
+  },
+
+  "k-hall": {
+    title: "K-Hall",
+    artist: "DJ Silvah",
+    artwork: "assets/14-k-hall-cover.png",
+    src: "assets/audio/14-k-hall.mp3",
+    video: "",
+    preset: "music"
+  },
+
+  "still-becoming": {
+    title: "Still Becoming",
+    artist: "DJ Silvah",
+    artwork: "assets/15-still-becoming-cover.png",
+    src: "assets/audio/15-still-becoming.mp3",
+    video: "",
+    preset: "music"
+  },
+
+  "audrey-lane": {
+    title: "Audrey Lane",
+    artist: "DJ Silvah",
+    artwork: "assets/16-audrey-lane-cover.png",
+    src: "assets/audio/16-audrey-lane.mp3",
+    video: "",
+    preset: "music"
+  },
+
+  "cold-steel-drum-section": {
+    title: "Cold Steel Drum Section",
+    artist: "DJ Silvah",
+    artwork: "assets/17-cold-steel-drum-section-cover.png",
+    src: "assets/audio/17-cold-steel-drum-section.mp3",
+    video: "",
+    preset: "music"
+  },
+
+  "yahz-chyld-318": {
+    title: "Yahz Chyld 318",
+    artist: "DJ Silvah",
+    artwork: "assets/18-yahz-chyld-318-cover.png",
+    src: "assets/audio/18-yahz-chyld-318.mp3",
+    video: "",
+    preset: "music"
+  },
+
+  "university-park-2": {
+    title: "University Park 2",
+    artist: "DJ Silvah",
+    artwork: "assets/19-university-park-2-cover.png",
+    src: "assets/audio/19-university-park-2.mp3",
+    video: "",
+    preset: "music"
+  },
+
+  "university-park": {
+    title: "University Park",
+    artist: "DJ Silvah",
+    artwork: "assets/20-university-park-cover.png",
+    src: "assets/audio/20-university-park.mp3",
+    video: "",
+    preset: "music"
+  },
+
+  yahcemity: {
+    title: "Yahcemity",
+    artist: "DJ Silvah",
+    artwork: "assets/21-yahcemity-cover.png",
+    src: "assets/audio/21-yahcemity.mp3",
+    video: "",
+    preset: "music"
+  }
+
+};
 
 
-  const channelConfig = {
+const channelConfig = {
 
-    lobby: {
-      label: "Main Lobby",
-      hero: heroSources.lobby,
-      adGroup: "clean",
-      tracks: [
-        trackLibrary.flo,
-        trackLibrary.mist,
-        trackLibrary.kiss,
-        trackLibrary["london-poppy"],
-        trackLibrary.elle,
-        trackLibrary["new-york-moods"],
-        trackLibrary["j-hollands"]
-      ]
-    },
+  lobby: {
+    label: "Main Lobby",
+    hero: heroSources.lobby,
+    adGroup: "clean",
 
-    "hip-hop": {
-      label: "Hip Hop",
-      hero: heroSources["hip-hop"],
-      adGroup: "nightlife",
-      tracks: []
-    },
+    tracks: [
+      trackLibrary.flo,
+      trackLibrary.mist,
+      trackLibrary.kiss,
+      trackLibrary["london-poppy"],
+      trackLibrary.elle,
+      trackLibrary["new-york-moods"],
+      trackLibrary["j-hollands"],
 
-    rnb: {
-      label: "R&B",
-      hero: heroSources.rnb,
-      adGroup: "nightlife",
-      tracks: [
-        trackLibrary.tipsy,
-        trackLibrary.faded,
-        trackLibrary["sex-me-next"]
-      ]
-    },
+      trackLibrary["every-version-of-me"],
+      trackLibrary["cajun-drummer"],
+      trackLibrary.java,
+      trackLibrary["k-hall"],
+      trackLibrary["still-becoming"],
+      trackLibrary["audrey-lane"],
+      trackLibrary["cold-steel-drum-section"],
+      trackLibrary["yahz-chyld-318"],
+      trackLibrary["university-park-2"],
+      trackLibrary["university-park"],
+      trackLibrary.yahcemity
+    ]
+  },
 
-    house: {
-      label: "House",
-      hero: heroSources.house,
-      adGroup: "nightlife",
-      tracks: []
-    },
+  "hip-hop": {
+    label: "Hip Hop",
+    hero: heroSources["hip-hop"],
+    adGroup: "nightlife",
+    tracks: []
+  },
 
-    reggae: {
-      label: "Reggae",
-      hero: heroSources.reggae,
-      adGroup: "clean",
-      tracks: []
-    },
+  rnb: {
+    label: "R&B",
+    hero: heroSources.rnb,
+    adGroup: "nightlife",
 
-    gospel: {
-      label: "Gospel",
-      hero: heroSources.gospel,
-      adGroup: "clean",
-      tracks: [
-        trackLibrary["son-of-a-preacher-man"]
-      ]
-    }
+    tracks: [
+      trackLibrary.tipsy,
+      trackLibrary.faded,
+      trackLibrary["sex-me-next"]
+    ]
+  },
 
-  };
+  house: {
+    label: "House",
+    hero: heroSources.house,
+    adGroup: "nightlife",
+    tracks: []
+  },
+
+  reggae: {
+    label: "Reggae",
+    hero: heroSources.reggae,
+    adGroup: "clean",
+    tracks: []
+  },
+
+  gospel: {
+    label: "Gospel",
+    hero: heroSources.gospel,
+    adGroup: "clean",
+
+    tracks: [
+      trackLibrary["son-of-a-preacher-man"]
+    ]
+  }
+
+};
 
 
   let activeChannel =
