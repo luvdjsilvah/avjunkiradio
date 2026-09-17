@@ -1426,30 +1426,27 @@ document.addEventListener("DOMContentLoaded", () => {
      CHANNEL HEROES / PLAYLISTS / MUSIC VIDEO
   ========================================================= */
 
-  const heroSources = {
+const heroSources = {
 
-    lobby:
-      "assets/Hero-Radio.webp",
+  lobby:
+    "assets/Hero-Radio.webp",
 
-    "hip-hop":
-      "assets/hero-radio-hiphop.webp",
+  "hip-hop":
+    "assets/hero-radio-hiphop.webp",
 
-    rnb:
-   rnb:
-  "assets/hero-radio-rnb.webp",
+  rnb:
+    "assets/hero-radio-rnb.webp",
 
-    house:
-      "assets/hero-radio-house.webp",
+  house:
+    "assets/hero-radio-house.webp",
 
-    reggae:
-      "assets/hero-radio-reggae.webp",
+  reggae:
+    "assets/hero-radio-reggae.webp",
 
-    gospel:
-     gospel:
-  "assets/hero-radio-gospel.webp"
+  gospel:
+    "assets/hero-radio-gospel.webp"
 
-  };
-
+};
 
   const trackLibrary = {
 
