@@ -1435,7 +1435,8 @@ document.addEventListener("DOMContentLoaded", () => {
       "assets/hero-radio-hiphop.webp",
 
     rnb:
-      "assets/hero-radio-r&b.webp",
+   rnb:
+  "assets/hero-radio-rnb.webp",
 
     house:
       "assets/hero-radio-house.webp",
@@ -1444,7 +1445,8 @@ document.addEventListener("DOMContentLoaded", () => {
       "assets/hero-radio-reggae.webp",
 
     gospel:
-      "assets/hero-radio-1 gospel.webp"
+     gospel:
+  "assets/hero-radio-gospel.webp"
 
   };
 
