@@ -678,7 +678,7 @@ document.addEventListener("DOMContentLoaded", () => {
           .createAnalyser();
 
       analyser.fftSize =
-        256;
+        2048;
 
       analyser
         .smoothingTimeConstant =
