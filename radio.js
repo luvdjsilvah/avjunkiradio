@@ -975,58 +975,85 @@ document.addEventListener("DOMContentLoaded", () => {
       i += 1
     ) {
 
-    const minBin = 1;
-const maxBin =
-  Math.floor(
-    frequencyData.length * 0.65
-  );
+ for (
+  let i = 0;
+  i < bars;
+  i += 1
+) {
 
-const normalizedPosition =
-  i / (bars - 1);
+  const minBin = 1;
 
-const dataIndex =
-  Math.floor(
-    minBin *
+  const maxBin =
+    Math.floor(
+      frequencyData.length * 0.65
+    );
+
+  const normalizedPosition =
+    i / (bars - 1);
+
+  const dataIndex =
+    Math.floor(
+      minBin *
+      Math.pow(
+        maxBin / minBin,
+        normalizedPosition
+      )
+    );
+
+  const normalized =
+    frequencyData[
+      Math.min(
+        dataIndex,
+        frequencyData.length - 1
+      )
+    ] / 255;
+
+  /*
+     VISUAL FREQUENCY BALANCE
+     Pull the bass down gradually without
+     suppressing the mids and highs.
+  */
+
+  const bassControl =
+    0.58 +
+    (0.42 * normalizedPosition);
+
+  const displayLevel =
     Math.pow(
-      maxBin / minBin,
-      normalizedPosition
-    )
+      normalized * bassControl,
+      1.25
+    );
+
+  const barHeight =
+    Math.max(
+      height * 0.04,
+      displayLevel *
+      height *
+      0.90
+    );
+
+  const x =
+    i *
+    (
+      barWidth +
+      gap
+    );
+
+  const y =
+    height -
+    barHeight;
+
+  ctx.fillRect(
+    x,
+    y,
+    Math.max(
+      1,
+      barWidth
+    ),
+    barHeight
   );
-      const normalized =
-        frequencyData[
-          dataIndex
-        ] /
-        255;
 
-      const barHeight =
-        Math.max(
-          height *
-          0.04,
-          normalized *
-          height *
-          0.94
-        );
-
-      const x =
-        i *
-        (
-          barWidth +
-          gap
-        );
-
-      const y =
-        height -
-        barHeight;
-
-      ctx.fillRect(
-        x,
-        y,
-        Math.max(
-          1,
-          barWidth
-        ),
-        barHeight
-      );
+}
 
     }
 
