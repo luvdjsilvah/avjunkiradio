@@ -982,7 +982,7 @@ document.addEventListener("DOMContentLoaded", () => {
             bars
           ) *
           frequencyData.length *
-          0.72
+          1.0
         );
 
       const normalized =
