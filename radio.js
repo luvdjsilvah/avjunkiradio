@@ -875,190 +875,525 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
 
-  function drawSpectrum(
-    frequencyData
+function drawSpectrum(
+  frequencyData
+) {
+
+  if (
+    !spectrumCanvas ||
+    !analyser
   ) {
+    return;
+  }
 
-    if (
-      !spectrumCanvas ||
-      !analyser
-    ) {
-      return;
-    }
+  resizeSpectrumCanvas();
 
-    resizeSpectrumCanvas();
+  const ctx =
+    spectrumCanvas.getContext("2d");
 
-    const ctx =
-      spectrumCanvas
-        .getContext(
-          "2d"
-        );
+  if (!ctx) {
+    return;
+  }
 
-    if (!ctx) {
-      return;
-    }
+  analyser.getByteFrequencyData(
+    frequencyData
+  );
 
-    analyser
-      .getByteFrequencyData(
-        frequencyData
-      );
+  const width =
+    spectrumCanvas.width;
 
-    const width =
-      spectrumCanvas.width;
+  const height =
+    spectrumCanvas.height;
 
-    const height =
-      spectrumCanvas.height;
+  ctx.clearRect(
+    0,
+    0,
+    width,
+    height
+  );
 
-    ctx.clearRect(
+
+  /* =========================================================
+     LIGHT BLUE ILLUMINATED DISPLAY
+  ========================================================= */
+
+  const background =
+    ctx.createLinearGradient(
       0,
       0,
-      width,
+      0,
       height
     );
 
-    const gradient =
-      ctx
-        .createLinearGradient(
-          0,
-          height,
-          0,
-          0
-        );
-
-    gradient.addColorStop(
-      0,
-      "rgba(45,185,255,.95)"
-    );
-
-    gradient.addColorStop(
-      0.48,
-      "rgba(108,118,255,.96)"
-    );
-
-    gradient.addColorStop(
-      0.74,
-      "rgba(222,147,76,.98)"
-    );
-
-    gradient.addColorStop(
-      1,
-      "rgba(255,93,55,1)"
-    );
-
-    ctx.fillStyle =
-      gradient;
-
-    const bars =
-      42;
-
-    const gap =
-      Math.max(
-        1,
-        width *
-        0.0035
-      );
-
-    const barWidth =
-      (
-        width -
-        gap *
-        (
-          bars -
-          1
-        )
-      ) /
-      bars;
-
-    for (
-      let i = 0;
-      i < bars;
-      i += 1
-    ) {
-
- for (
-  let i = 0;
-  i < bars;
-  i += 1
-) {
-
-  const minBin = 1;
-
-  const maxBin =
-    Math.floor(
-      frequencyData.length * 0.65
-    );
-
-  const normalizedPosition =
-    i / (bars - 1);
-
-  const dataIndex =
-    Math.floor(
-      minBin *
-      Math.pow(
-        maxBin / minBin,
-        normalizedPosition
-      )
-    );
-
-  const normalized =
-    frequencyData[
-      Math.min(
-        dataIndex,
-        frequencyData.length - 1
-      )
-    ] / 255;
-
-  /*
-     VISUAL FREQUENCY BALANCE
-     Pull the bass down gradually without
-     suppressing the mids and highs.
-  */
-
-  const bassControl =
-    0.58 +
-    (0.42 * normalizedPosition);
-
-  const displayLevel =
-    Math.pow(
-      normalized * bassControl,
-      1.25
-    );
-
-  const barHeight =
-    Math.max(
-      height * 0.04,
-      displayLevel *
-      height *
-      0.90
-    );
-
-  const x =
-    i *
-    (
-      barWidth +
-      gap
-    );
-
-  const y =
-    height -
-    barHeight;
-
-  ctx.fillRect(
-    x,
-    y,
-    Math.max(
-      1,
-      barWidth
-    ),
-    barHeight
+  background.addColorStop(
+    0,
+    "rgba(125, 215, 255, 0.24)"
   );
 
-}
+  background.addColorStop(
+    0.5,
+    "rgba(50, 155, 220, 0.18)"
+  );
 
-    }
+  background.addColorStop(
+    1,
+    "rgba(10, 55, 90, 0.30)"
+  );
+
+  ctx.fillStyle =
+    background;
+
+  ctx.fillRect(
+    0,
+    0,
+    width,
+    height
+  );
+
+
+  /* =========================================================
+     FREQUENCY RANGE
+     Full useful music spectrum
+  ========================================================= */
+
+  const sampleRate =
+    audioContext
+      ? audioContext.sampleRate
+      : 48000;
+
+  const nyquist =
+    sampleRate / 2;
+
+  const minFrequency =
+    40;
+
+  const maxFrequency =
+    Math.min(
+      20000,
+      nyquist * 0.95
+    );
+
+
+  /* =========================================================
+     DISPLAY AREA
+  ========================================================= */
+
+  const plotTop =
+    height * 0.08;
+
+  const plotBottom =
+    height * 0.76;
+
+  const plotHeight =
+    plotBottom -
+    plotTop;
+
+  const pointCount =
+    Math.max(
+      72,
+      Math.floor(
+        width / 4
+      )
+    );
+
+  const points = [];
+
+
+  /* =========================================================
+     LOGARITHMIC FREQUENCY SAMPLING
+
+     Bass gets physical space on the left,
+     mids live in the center,
+     highs remain active to 20 kHz.
+  ========================================================= */
+
+  for (
+    let i = 0;
+    i < pointCount;
+    i += 1
+  ) {
+
+    const position =
+      i /
+      (pointCount - 1);
+
+    const frequency =
+      minFrequency *
+      Math.pow(
+        maxFrequency /
+        minFrequency,
+        position
+      );
+
+    const exactBin =
+      frequency /
+      nyquist *
+      (frequencyData.length - 1);
+
+    const lowerBin =
+      Math.floor(
+        exactBin
+      );
+
+    const upperBin =
+      Math.min(
+        lowerBin + 1,
+        frequencyData.length - 1
+      );
+
+    const fraction =
+      exactBin -
+      lowerBin;
+
+    const lowerValue =
+      frequencyData[
+        Math.max(
+          0,
+          lowerBin
+        )
+      ];
+
+    const upperValue =
+      frequencyData[
+        upperBin
+      ];
+
+    const interpolatedValue =
+      lowerValue +
+      (
+        upperValue -
+        lowerValue
+      ) *
+      fraction;
+
+    let normalized =
+      interpolatedValue /
+      255;
+
+
+    /*
+       Gentle visual compensation.
+
+       High frequencies naturally contain
+       less energy than bass, so this keeps
+       real treble activity visible without
+       inventing fake frequency movement.
+    */
+
+    const highFrequencyLift =
+      1 +
+      (
+        position *
+        0.65
+      );
+
+    normalized =
+      Math.min(
+        1,
+        normalized *
+        highFrequencyLift
+      );
+
+    normalized =
+      Math.pow(
+        normalized,
+        0.72
+      );
+
+
+    const x =
+      position *
+      width;
+
+    const y =
+      plotBottom -
+      (
+        normalized *
+        plotHeight
+      );
+
+    points.push({
+      x,
+      y
+    });
 
   }
 
+
+  /* =========================================================
+     BLUE ENERGY FILL UNDER THE WAVE
+  ========================================================= */
+
+  if (
+    points.length >
+    1
+  ) {
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      points[0].x,
+      plotBottom
+    );
+
+    ctx.lineTo(
+      points[0].x,
+      points[0].y
+    );
+
+    for (
+      let i = 1;
+      i < points.length - 1;
+      i += 1
+    ) {
+
+      const current =
+        points[i];
+
+      const next =
+        points[i + 1];
+
+      const midX =
+        (
+          current.x +
+          next.x
+        ) / 2;
+
+      const midY =
+        (
+          current.y +
+          next.y
+        ) / 2;
+
+      ctx.quadraticCurveTo(
+        current.x,
+        current.y,
+        midX,
+        midY
+      );
+
+    }
+
+    const lastPoint =
+      points[
+        points.length - 1
+      ];
+
+    ctx.lineTo(
+      lastPoint.x,
+      lastPoint.y
+    );
+
+    ctx.lineTo(
+      lastPoint.x,
+      plotBottom
+    );
+
+    ctx.closePath();
+
+
+    const waveFill =
+      ctx.createLinearGradient(
+        0,
+        plotTop,
+        0,
+        plotBottom
+      );
+
+    waveFill.addColorStop(
+      0,
+      "rgba(220, 245, 255, 0.32)"
+    );
+
+    waveFill.addColorStop(
+      0.45,
+      "rgba(90, 195, 255, 0.22)"
+    );
+
+    waveFill.addColorStop(
+      1,
+      "rgba(30, 125, 205, 0.05)"
+    );
+
+    ctx.fillStyle =
+      waveFill;
+
+    ctx.fill();
+
+
+    /* =========================================================
+       WHITE REACTIVE FREQUENCY WAVE
+    ========================================================= */
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      points[0].x,
+      points[0].y
+    );
+
+    for (
+      let i = 1;
+      i < points.length - 1;
+      i += 1
+    ) {
+
+      const current =
+        points[i];
+
+      const next =
+        points[i + 1];
+
+      const midX =
+        (
+          current.x +
+          next.x
+        ) / 2;
+
+      const midY =
+        (
+          current.y +
+          next.y
+        ) / 2;
+
+      ctx.quadraticCurveTo(
+        current.x,
+        current.y,
+        midX,
+        midY
+      );
+
+    }
+
+    ctx.lineTo(
+      lastPoint.x,
+      lastPoint.y
+    );
+
+    ctx.strokeStyle =
+      "rgba(245, 252, 255, 0.98)";
+
+    ctx.lineWidth =
+      Math.max(
+        1.4,
+        height * 0.018
+      );
+
+    ctx.lineJoin =
+      "round";
+
+    ctx.lineCap =
+      "round";
+
+    ctx.shadowColor =
+      "rgba(170, 230, 255, 0.95)";
+
+    ctx.shadowBlur =
+      Math.max(
+        5,
+        height * 0.08
+      );
+
+    ctx.stroke();
+
+    ctx.shadowBlur =
+      0;
+
+  }
+
+
+  /* =========================================================
+     FREQUENCY LABELS
+     DISPLAY ONLY — NOT CONTROLS
+  ========================================================= */
+
+  const labels = [
+    { frequency: 60, label: "60" },
+    { frequency: 120, label: "120" },
+    { frequency: 250, label: "250" },
+    { frequency: 500, label: "500" },
+    { frequency: 1000, label: "1K" },
+    { frequency: 2000, label: "2K" },
+    { frequency: 4000, label: "4K" },
+    { frequency: 8000, label: "8K" },
+    { frequency: 16000, label: "16K" }
+  ];
+
+  ctx.textAlign =
+    "center";
+
+  ctx.textBaseline =
+    "middle";
+
+  ctx.font =
+    `${Math.max(
+      8,
+      height * 0.095
+    )}px Arial`;
+
+  ctx.fillStyle =
+    "rgba(225, 245, 255, 0.60)";
+
+  ctx.strokeStyle =
+    "rgba(210, 240, 255, 0.10)";
+
+  ctx.lineWidth =
+    1;
+
+
+  labels.forEach(
+    ({
+      frequency,
+      label
+    }) => {
+
+      if (
+        frequency >
+        maxFrequency
+      ) {
+        return;
+      }
+
+      const position =
+        Math.log(
+          frequency /
+          minFrequency
+        ) /
+        Math.log(
+          maxFrequency /
+          minFrequency
+        );
+
+      const x =
+        position *
+        width;
+
+
+      ctx.beginPath();
+
+      ctx.moveTo(
+        x,
+        plotBottom
+      );
+
+      ctx.lineTo(
+        x,
+        plotTop
+      );
+
+      ctx.stroke();
+
+
+      ctx.fillText(
+        label,
+        x,
+        height * 0.89
+      );
+
+    }
+  );
+
+}
 
   function drawAnalogVU(
     timeData
