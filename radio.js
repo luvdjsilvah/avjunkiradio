@@ -1080,25 +1080,59 @@ function drawSpectrum(
        inventing fake frequency movement.
     */
 
-    const highFrequencyLift =
-      1 +
+  /* =========================================================
+   VISUAL SPECTRUM BALANCE
+
+   Keep the lows and low-mids from riding the ceiling,
+   while preserving natural dips and peaks.
+========================================================= */
+
+const lowMidTrim =
+  frequency < 120
+    ? 0.62
+    : frequency < 250
+      ? 0.66
+      : frequency < 500
+        ? 0.72
+        : frequency < 1000
+          ? 0.78
+          : frequency < 2000
+            ? 0.86
+            : 0.92;
+
+const highDetailLift =
+  frequency >= 2000
+    ? 1 +
       (
-        position *
-        0.65
-      );
+        (
+          Math.min(
+            frequency,
+            16000
+          ) -
+          2000
+        ) /
+        14000
+      ) *
+      0.12
+    : 1;
 
-    normalized =
-      Math.min(
-        1,
-        normalized *
-        highFrequencyLift
-      );
+normalized =
+  Math.min(
+    1,
+    normalized *
+    lowMidTrim *
+    highDetailLift
+  );
 
-    normalized =
-      Math.pow(
-        normalized,
-        0.72
-      );
+normalized =
+  Math.pow(
+    normalized,
+    1.15
+  );
+
+/* Leave visible headroom at the top */
+
+normalized *= 0.88;
 
 
     const x =
