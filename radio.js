@@ -1541,7 +1541,7 @@ const trackLibrary = {
   "new-york-moods": {
     title: "New York Moods",
     artist: "DJ Silvah",
-    artwork: "assets/Ney York Moods album Art.png",
+   artwork: "assets/New York Moods album Art.png",
     src: "assets/audio/06-new-york-moods.mp3",
     video: "",
     preset: "music"
@@ -1680,7 +1680,34 @@ const trackLibrary = {
     src: "assets/audio/21-yahcemity.mp3",
     video: "",
     preset: "music"
+   },
+       pause: {
+    title: "Pause",
+    artist: "DJ Silvah",
+    artwork: "assets/Pause Art.png",
+    src: "assets/audio/22-pause.mp3",
+    video: "",
+    preset: "music"
+  },
+
+  "smoke-and-prayer": {
+    title: "Smoke & Prayer",
+    artist: "DJ Silvah",
+    artwork: "assets/Smoke & Prayer art.png",
+    src: "assets/audio/23-smoke-&- prayer.mp3",
+    video: "",
+    preset: "music"
+  },
+
+  "same-sun": {
+    title: "Same Sun",
+    artist: "DJ Silvah",
+    artwork: "assets/Same Sun art.png",
+    src: "assets/audio/24-same-sun.mp3",
+    video: "",
+    preset: "music"
   }
+  
 
 };
 
@@ -1711,8 +1738,10 @@ const channelConfig = {
       trackLibrary["yahz-chyld-318"],
       trackLibrary["university-park-2"],
       trackLibrary["university-park"],
-      trackLibrary.yahcemity
-    ]
+      trackLibrary.yahcemity,
+      trackLibrary.pause,
+      trackLibrary["smoke-and-prayer"],
+      trackLibrary["same-sun"]
   },
 
   "hip-hop": {
