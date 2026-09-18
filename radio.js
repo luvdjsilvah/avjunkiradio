@@ -2386,16 +2386,32 @@ const channelConfig = {
   }
 
 
-  function playNextTrack() {
+function playNextTrack() {
 
-    loadTrack(
-      currentTrackIndex +
-      1,
-      true
-    );
-
+  if (playlist.length <= 1) {
+    loadTrack(0, true);
+    return;
   }
 
+  let nextTrackIndex;
+
+  do {
+    nextTrackIndex =
+      Math.floor(
+        Math.random() *
+        playlist.length
+      );
+  } while (
+    nextTrackIndex ===
+    currentTrackIndex
+  );
+
+  loadTrack(
+    nextTrackIndex,
+    true
+  );
+
+}
 
   if (
     previousTrack
