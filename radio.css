@@ -575,7 +575,7 @@ button {
   width: 11.8%;
   height: 7.2%;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 4px;
   border: 1px solid rgba(255,255,255,.055);
   background:
