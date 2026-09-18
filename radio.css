@@ -2288,3 +2288,32 @@ button {
     0% 100%
   );
 }
+/* =========================================================
+   SPECTRUM ANALYZER HARDWARE BEZEL
+========================================================= */
+
+#spectrum-wrap {
+  isolation: isolate;
+}
+
+#spectrum-canvas {
+  z-index: 1;
+}
+
+#spectrum-wrap::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  z-index: 3;
+
+  background-image:
+    url("assets/spectrum-bezel-thin-v1.png");
+
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%;
+
+  pointer-events: none;
+}
