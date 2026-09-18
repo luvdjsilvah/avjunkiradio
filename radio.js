@@ -1742,6 +1742,7 @@ const channelConfig = {
       trackLibrary.pause,
       trackLibrary["smoke-and-prayer"],
       trackLibrary["same-sun"]
+       ]
   },
 
   "hip-hop": {
