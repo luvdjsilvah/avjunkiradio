@@ -335,7 +335,140 @@ button {
   height: 100%;
   overflow: hidden;
 }
+/* =========================================================
+   NOW PLAYING — CENTER SCREEN
+========================================================= */
 
+#radio-now-playing {
+  position: absolute;
+  inset: 0;
+
+  z-index: 4;
+
+  width: 100%;
+  height: 100%;
+
+  overflow: hidden;
+
+  opacity: 0;
+  visibility: hidden;
+
+  background: #050505;
+
+  transition:
+    opacity .35s ease,
+    visibility .35s ease;
+}
+
+#radio-now-playing.is-active {
+  opacity: 1;
+  visibility: visible;
+}
+
+#now-playing-background {
+  position: absolute;
+  inset: -5%;
+
+  width: 110%;
+  height: 110%;
+
+  object-fit: cover;
+
+  filter:
+    blur(18px)
+    brightness(.30)
+    saturate(.80);
+
+  transform: scale(1.05);
+
+  opacity: .42;
+}
+
+#now-playing-shade {
+  position: absolute;
+  inset: 0;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0,0,0,.20) 0%,
+      rgba(0,0,0,.42) 48%,
+      rgba(0,0,0,.82) 100%
+    );
+}
+
+#now-playing-art {
+  position: absolute;
+
+  left: 7%;
+  top: 14%;
+
+  width: 34%;
+  aspect-ratio: 1 / 1;
+
+  object-fit: cover;
+
+  border: 1px solid rgba(229,172,76,.90);
+
+  box-shadow:
+    0 0 0 2px rgba(0,0,0,.72),
+    0 8px 28px rgba(0,0,0,.72);
+}
+
+#now-playing-info {
+  position: absolute;
+
+  left: 49%;
+  top: 25%;
+
+  width: 43%;
+
+  color: #fff;
+}
+
+#now-playing-label {
+  margin-bottom: 4%;
+
+  font-size: clamp(9px, .75vw, 18px);
+  letter-spacing: .32em;
+
+  color: rgba(255,255,255,.76);
+}
+
+#now-playing-title {
+  font-size: clamp(24px, 2.7vw, 64px);
+  font-weight: 800;
+  line-height: 1;
+
+  color: rgba(255,250,238,.98);
+}
+
+#now-playing-artist {
+  margin-top: 4%;
+
+  font-size: clamp(13px, 1.25vw, 30px);
+  line-height: 1.15;
+
+  color: rgba(229,172,76,.96);
+}
+
+#now-playing-rule {
+  width: 88%;
+  height: 1px;
+
+  margin-top: 8%;
+  margin-bottom: 7%;
+
+  background: rgba(229,172,76,.78);
+}
+
+#now-playing-brand {
+  font-size: clamp(10px, .85vw, 20px);
+  font-weight: 600;
+  letter-spacing: .28em;
+
+  color: rgba(229,172,76,.84);
+}
 
 /* =========================================================
    PANEL HOTSPOTS
