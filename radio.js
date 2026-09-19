@@ -3034,7 +3034,25 @@ function playNextTrack() {
             : "none";
 
       }
+      if (nowPlayingBackground) {
+        nowPlayingBackground.src =
+          artwork || "";
+      }
 
+      if (nowPlayingArt) {
+        nowPlayingArt.src =
+          artwork || "";
+      }
+
+      if (nowPlayingTitle) {
+        nowPlayingTitle.textContent =
+          title;
+      }
+
+      if (nowPlayingArtist) {
+        nowPlayingArtist.textContent =
+          artist;
+      }
 
       applyPreset(
         preset
