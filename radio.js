@@ -2661,8 +2661,15 @@ if (nowPlaying) {
       )
     ) {
 
-      showScreenSaver();
-
+   if (
+  nowPlayingArt &&
+  nowPlayingArt.getAttribute("src")
+) {
+  showNowPlaying();
+} else {
+  showScreenSaver();
+}
+       
       return;
 
     }
