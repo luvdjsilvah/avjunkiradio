@@ -2458,7 +2458,28 @@ const channelConfig = {
   /* =========================================================
      DEFAULT SCREEN SAVER
   ========================================================= */
+  function showNowPlaying() {
 
+    if (!nowPlaying) {
+      return;
+    }
+
+    if (screenSaver) {
+      screenSaver.classList.add(
+        "is-hidden"
+      );
+    }
+
+    nowPlaying.classList.add(
+      "is-active"
+    );
+
+    if (trackVideo) {
+      trackVideo.style.display =
+        "none";
+    }
+
+  }
   function showScreenSaver() {
 
     if (
@@ -2470,7 +2491,11 @@ const channelConfig = {
         .remove(
           "is-hidden"
         );
-
+if (nowPlaying) {
+  nowPlaying.classList.remove(
+    "is-active"
+  );
+}
     }
 
     if (
