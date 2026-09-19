@@ -62,7 +62,30 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById(
       "radio-screen-saver-image"
     );
+  const nowPlaying =
+    document.getElementById(
+      "radio-now-playing"
+    );
 
+  const nowPlayingBackground =
+    document.getElementById(
+      "now-playing-background"
+    );
+
+  const nowPlayingArt =
+    document.getElementById(
+      "now-playing-art"
+    );
+
+  const nowPlayingTitle =
+    document.getElementById(
+      "now-playing-title"
+    );
+
+  const nowPlayingArtist =
+    document.getElementById(
+      "now-playing-artist"
+    );
   const heroImage =
     document.getElementById(
       "radio-hero-image"
