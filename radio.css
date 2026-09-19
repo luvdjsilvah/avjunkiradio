@@ -356,8 +356,8 @@ button {
   background: #050505;
 
   transition:
-    opacity .35s ease,
-    visibility .35s ease;
+    opacity .8s ease,
+    visibility .8s ease;
 }
 
 #radio-now-playing.is-active {
@@ -2210,8 +2210,8 @@ box-shadow:
   visibility: visible;
 
   transition:
-    opacity .22s ease,
-    visibility .22s ease;
+    opacity .8s ease,
+    visibility .8s ease;
 }
 
 #radio-screen-saver.is-hidden {
