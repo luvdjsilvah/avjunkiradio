@@ -376,7 +376,7 @@ button {
 
   filter:
     blur(18px)
-    brightness(.30)
+    brightness(.7)
     saturate(.80);
 
   transform: scale(1.05);
