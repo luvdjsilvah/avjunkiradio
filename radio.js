@@ -126,6 +126,16 @@ document.addEventListener("DOMContentLoaded", () => {
   let videoSyncing =
     false;
 
+  let dropVisual = null;
+
+  let dropWaveCanvas = null;
+
+  let currentTrackIsStationId =
+    false;
+
+  const DROP_SCREEN_SRC =
+    "assets/avjunki-radio-drop-screen.webp";
+
   const spectrumCanvas =
     document.getElementById(
       "spectrum-canvas"
@@ -855,6 +865,10 @@ document.addEventListener("DOMContentLoaded", () => {
         );
 
         drawAnalogVU(
+          timeData
+        );
+
+        drawDropWaveform(
           timeData
         );
 
@@ -1971,7 +1985,8 @@ document.addEventListener("DOMContentLoaded", () => {
       artwork: "",
       src: "assets/audio/ids/AVJ_ID_01_Youre_Listening.mp3",
       video: "",
-      preset: "music"
+      preset: "music",
+      isStationId: true
     },
 
     {
@@ -1980,7 +1995,8 @@ document.addEventListener("DOMContentLoaded", () => {
       artwork: "",
       src: "assets/audio/ids/AVJ_ID_02_Where_The_Vibe_Lives.mp3",
       video: "",
-      preset: "music"
+      preset: "music",
+      isStationId: true
     },
 
     {
@@ -1989,7 +2005,8 @@ document.addEventListener("DOMContentLoaded", () => {
       artwork: "",
       src: "assets/audio/ids/AVJ_ID_03_This_Is_AV_Junki_Radio.mp3",
       video: "",
-      preset: "music"
+      preset: "music",
+      isStationId: true
     },
 
     {
@@ -1998,7 +2015,8 @@ document.addEventListener("DOMContentLoaded", () => {
       artwork: "",
       src: "assets/audio/ids/AVJ_ID_04_Stay_Right_Here.mp3",
       video: "",
-      preset: "music"
+      preset: "music",
+      isStationId: true
     },
 
     {
@@ -2007,7 +2025,8 @@ document.addEventListener("DOMContentLoaded", () => {
       artwork: "",
       src: "assets/audio/ids/AVJ_ID_05_Smooth_Jazz_To_Soul.mp3",
       video: "",
-      preset: "music"
+      preset: "music",
+      isStationId: true
     },
 
     {
@@ -2016,7 +2035,8 @@ document.addEventListener("DOMContentLoaded", () => {
       artwork: "",
       src: "assets/audio/ids/AVJ_ID_06_Music_For_The_Moment.mp3",
       video: "",
-      preset: "music"
+      preset: "music",
+      isStationId: true
     },
 
     {
@@ -2025,7 +2045,8 @@ document.addEventListener("DOMContentLoaded", () => {
       artwork: "",
       src: "assets/audio/ids/AVJ_ID_07_No_Rush_No_Noise.mp3",
       video: "",
-      preset: "music"
+      preset: "music",
+      isStationId: true
     },
 
     {
@@ -2034,7 +2055,8 @@ document.addEventListener("DOMContentLoaded", () => {
       artwork: "",
       src: "assets/audio/ids/AVJ_ID_08_Settle_In.mp3",
       video: "",
-      preset: "music"
+      preset: "music",
+      isStationId: true
     }
 
   ];
@@ -3195,6 +3217,8 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    hideDropVisual();
+
     if (screenSaver) {
 
       screenSaver.classList.add(
@@ -3218,6 +3242,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   function showScreenSaver() {
+
+    hideDropVisual();
 
     if (
       screenSaver
@@ -3288,6 +3314,475 @@ document.addEventListener("DOMContentLoaded", () => {
 
         }
       );
+
+  }
+
+
+  /* =========================================================
+     STATION ID DROP SCREEN / REACTIVE WAVEFORM
+  ========================================================= */
+
+  function ensureDropVisual() {
+
+    if (
+      !screenContent
+    ) {
+
+      return null;
+
+    }
+
+    if (
+      dropVisual &&
+      dropWaveCanvas
+    ) {
+
+      return dropVisual;
+
+    }
+
+    /*
+      Make sure the drop overlay anchors to
+      the center-screen container.
+    */
+
+    const screenPosition =
+      window
+        .getComputedStyle(
+          screenContent
+        )
+        .position;
+
+    if (
+      screenPosition ===
+      "static"
+    ) {
+
+      screenContent.style.position =
+        "relative";
+
+    }
+
+
+    dropVisual =
+      document.createElement(
+        "div"
+      );
+
+    dropVisual.id =
+      "radio-drop-visual";
+
+    dropVisual.setAttribute(
+      "aria-label",
+      "AV Junki Radio station identification"
+    );
+
+    Object.assign(
+      dropVisual.style,
+      {
+        position:
+          "absolute",
+
+        inset:
+          "0",
+
+        display:
+          "none",
+
+        overflow:
+          "hidden",
+
+        zIndex:
+          "12",
+
+        pointerEvents:
+          "none",
+
+        backgroundImage:
+          `url("${DROP_SCREEN_SRC}")`,
+
+        backgroundSize:
+          "cover",
+
+        backgroundPosition:
+          "center",
+
+        backgroundRepeat:
+          "no-repeat"
+      }
+    );
+
+
+    dropWaveCanvas =
+      document.createElement(
+        "canvas"
+      );
+
+    dropWaveCanvas.id =
+      "radio-drop-waveform";
+
+    dropWaveCanvas.setAttribute(
+      "aria-hidden",
+      "true"
+    );
+
+    Object.assign(
+      dropWaveCanvas.style,
+      {
+        position:
+          "absolute",
+
+        left:
+          "50%",
+
+        top:
+          "67%",
+
+        transform:
+          "translate(-50%, -50%)",
+
+        width:
+          "82%",
+
+        height:
+          "26%",
+
+        display:
+          "block",
+
+        pointerEvents:
+          "none"
+      }
+    );
+
+
+    dropVisual.appendChild(
+      dropWaveCanvas
+    );
+
+    screenContent.appendChild(
+      dropVisual
+    );
+
+    return dropVisual;
+
+  }
+
+
+  function resizeDropWaveCanvas() {
+
+    if (
+      !dropWaveCanvas
+    ) {
+
+      return;
+
+    }
+
+    const rect =
+      dropWaveCanvas
+        .getBoundingClientRect();
+
+    const dpr =
+      Math.max(
+        1,
+        Math.min(
+          window.devicePixelRatio ||
+          1,
+          2
+        )
+      );
+
+    const width =
+      Math.max(
+        1,
+        Math.round(
+          rect.width *
+          dpr
+        )
+      );
+
+    const height =
+      Math.max(
+        1,
+        Math.round(
+          rect.height *
+          dpr
+        )
+      );
+
+    if (
+      dropWaveCanvas.width !==
+        width ||
+      dropWaveCanvas.height !==
+        height
+    ) {
+
+      dropWaveCanvas.width =
+        width;
+
+      dropWaveCanvas.height =
+        height;
+
+    }
+
+  }
+
+
+  function hideDropVisual() {
+
+    if (
+      dropVisual
+    ) {
+
+      dropVisual.style.display =
+        "none";
+
+    }
+
+  }
+
+
+  function showDropVisual() {
+
+    const visual =
+      ensureDropVisual();
+
+    if (
+      !visual
+    ) {
+
+      return;
+
+    }
+
+    if (
+      screenSaver
+    ) {
+
+      screenSaver.classList.add(
+        "is-hidden"
+      );
+
+    }
+
+    if (
+      nowPlaying
+    ) {
+
+      nowPlaying.classList.remove(
+        "is-active"
+      );
+
+    }
+
+    if (
+      trackVideo
+    ) {
+
+      trackVideo.style.display =
+        "none";
+
+    }
+
+    visual.style.display =
+      "block";
+
+    resizeDropWaveCanvas();
+
+  }
+
+
+  function drawDropWaveform(
+    timeData
+  ) {
+
+    if (
+      !currentTrackIsStationId ||
+      !analyser ||
+      !dropVisual ||
+      dropVisual.style.display ===
+        "none" ||
+      !dropWaveCanvas ||
+      !timeData ||
+      !timeData.length
+    ) {
+
+      return;
+
+    }
+
+    analyser.getByteTimeDomainData(
+      timeData
+    );
+
+    resizeDropWaveCanvas();
+
+    const ctx =
+      dropWaveCanvas.getContext(
+        "2d"
+      );
+
+    if (
+      !ctx
+    ) {
+
+      return;
+
+    }
+
+    const width =
+      dropWaveCanvas.width;
+
+    const height =
+      dropWaveCanvas.height;
+
+    const centerY =
+      height / 2;
+
+    ctx.clearRect(
+      0,
+      0,
+      width,
+      height
+    );
+
+
+    /*
+      Soft center guide.
+    */
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      0,
+      centerY
+    );
+
+    ctx.lineTo(
+      width,
+      centerY
+    );
+
+    ctx.strokeStyle =
+      "rgba(205, 238, 255, 0.20)";
+
+    ctx.lineWidth =
+      Math.max(
+        1,
+        height * 0.006
+      );
+
+    ctx.stroke();
+
+
+    /*
+      Main long-form reactive voice waveform.
+      It spans roughly 80% of the drop screen.
+    */
+
+    ctx.beginPath();
+
+    const sampleCount =
+      Math.min(
+        timeData.length,
+        Math.max(
+          256,
+          Math.floor(
+            width / 2
+          )
+        )
+      );
+
+    const step =
+      timeData.length /
+      sampleCount;
+
+    for (
+      let i = 0;
+      i < sampleCount;
+      i += 1
+    ) {
+
+      const sampleIndex =
+        Math.min(
+          timeData.length - 1,
+          Math.floor(
+            i *
+            step
+          )
+        );
+
+      const normalized =
+        (
+          timeData[
+            sampleIndex
+          ] -
+          128
+        ) /
+        128;
+
+      const x =
+        (
+          i /
+          (sampleCount - 1)
+        ) *
+        width;
+
+      const y =
+        centerY +
+        normalized *
+        height *
+        0.40;
+
+      if (
+        i === 0
+      ) {
+
+        ctx.moveTo(
+          x,
+          y
+        );
+
+      } else {
+
+        ctx.lineTo(
+          x,
+          y
+        );
+
+      }
+
+    }
+
+    ctx.strokeStyle =
+      "rgba(245, 252, 255, 0.98)";
+
+    ctx.lineWidth =
+      Math.max(
+        2,
+        height * 0.022
+      );
+
+    ctx.lineJoin =
+      "round";
+
+    ctx.lineCap =
+      "round";
+
+    ctx.shadowColor =
+      "rgba(105, 205, 255, 0.95)";
+
+    ctx.shadowBlur =
+      Math.max(
+        8,
+        height * 0.10
+      );
+
+    ctx.stroke();
+
+    ctx.shadowBlur =
+      0;
 
   }
 
@@ -3400,6 +3895,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showTrackVideo() {
 
+    if (
+      currentTrackIsStationId
+    ) {
+
+      showDropVisual();
+
+      return;
+
+    }
+
+    hideDropVisual();
+
     const video =
       ensureTrackVideo();
 
@@ -3472,6 +3979,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   function stopTrackVideo() {
+
+    hideDropVisual();
 
     if (
       !trackVideo
@@ -4031,9 +4540,18 @@ document.addEventListener("DOMContentLoaded", () => {
         "",
 
       preset =
-        "music"
+        "music",
+
+      isStationId =
+        false
 
     } = {}) => {
+
+
+      currentTrackIsStationId =
+        Boolean(
+          isStationId
+        );
 
 
       if (
@@ -4174,7 +4692,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
       }
 
-      showScreenSaver();
+      if (
+        currentTrackIsStationId
+      ) {
+
+        showDropVisual();
+
+      } else {
+
+        hideDropVisual();
+
+        showScreenSaver();
+
+      }
 
     };
 
@@ -4451,7 +4981,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   window.addEventListener(
     "resize",
-    resizeSpectrumCanvas
+    () => {
+
+      resizeSpectrumCanvas();
+
+      resizeDropWaveCanvas();
+
+    }
   );
 
 
