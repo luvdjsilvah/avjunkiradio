@@ -1,10 +1,8 @@
 /* =========================================================
    AV JUNKI RADIO
    radio.js
-
    MASTER PLAYER / DSP / INFO DISPLAY CONTROLLER
 ========================================================= */
-
 "use strict";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -62,6 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById(
       "radio-screen-saver-image"
     );
+
   const nowPlaying =
     document.getElementById(
       "radio-now-playing"
@@ -86,6 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById(
       "now-playing-artist"
     );
+
   const heroImage =
     document.getElementById(
       "radio-hero-image"
@@ -227,21 +227,13 @@ document.addEventListener("DOMContentLoaded", () => {
   ========================================================= */
 
   let audioContext = null;
-
   let sourceNode = null;
-
   let inputGain = null;
-
   let lowShelf = null;
-
   let presenceEQ = null;
-
   let compressor = null;
-
   let limiter = null;
-
   let analyser = null;
-
   let masterGain = null;
 
   let audioGraphReady =
@@ -633,18 +625,15 @@ document.addEventListener("DOMContentLoaded", () => {
       audioContext =
         new AudioContextClass();
 
-
       sourceNode =
         audioContext
           .createMediaElementSource(
             audio
           );
 
-
       inputGain =
         audioContext
           .createGain();
-
 
       lowShelf =
         audioContext
@@ -655,7 +644,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       lowShelf.frequency.value =
         120;
-
 
       presenceEQ =
         audioContext
@@ -670,11 +658,9 @@ document.addEventListener("DOMContentLoaded", () => {
       presenceEQ.Q.value =
         0.85;
 
-
       compressor =
         audioContext
           .createDynamicsCompressor();
-
 
       limiter =
         audioContext
@@ -695,7 +681,6 @@ document.addEventListener("DOMContentLoaded", () => {
       limiter.release.value =
         0.08;
 
-
       analyser =
         audioContext
           .createAnalyser();
@@ -707,7 +692,6 @@ document.addEventListener("DOMContentLoaded", () => {
         .smoothingTimeConstant =
         0.78;
 
-
       masterGain =
         audioContext
           .createGain();
@@ -718,7 +702,6 @@ document.addEventListener("DOMContentLoaded", () => {
               volumeSlider.value
             ) / 100
           : 0.8;
-
 
       sourceNode
         .connect(
@@ -746,14 +729,11 @@ document.addEventListener("DOMContentLoaded", () => {
           audioContext.destination
         );
 
-
       audio.volume =
         1;
 
-
       audioGraphReady =
         true;
-
 
       audioContext
         .addEventListener(
@@ -768,14 +748,11 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         );
 
-
       applyPreset(
         activePreset
       );
 
-
       resizeSpectrumCanvas();
-
 
       startMeterAnimation();
 
@@ -898,559 +875,511 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
 
-function drawSpectrum(
-  frequencyData
-) {
-
-  if (
-    !spectrumCanvas ||
-    !analyser
-  ) {
-    return;
-  }
-
-  resizeSpectrumCanvas();
-
-  const ctx =
-    spectrumCanvas.getContext("2d");
-
-  if (!ctx) {
-    return;
-  }
-
-  analyser.getByteFrequencyData(
+  function drawSpectrum(
     frequencyData
-  );
+  ) {
 
-  const width =
-    spectrumCanvas.width;
+    if (
+      !spectrumCanvas ||
+      !analyser
+    ) {
+      return;
+    }
 
-  const height =
-    spectrumCanvas.height;
+    resizeSpectrumCanvas();
 
-  ctx.clearRect(
-    0,
-    0,
-    width,
-    height
-  );
+    const ctx =
+      spectrumCanvas.getContext("2d");
 
+    if (!ctx) {
+      return;
+    }
 
-  /* =========================================================
-     LIGHT BLUE ILLUMINATED DISPLAY
-  ========================================================= */
+    analyser.getByteFrequencyData(
+      frequencyData
+    );
 
-  const background =
-    ctx.createLinearGradient(
+    const width =
+      spectrumCanvas.width;
+
+    const height =
+      spectrumCanvas.height;
+
+    ctx.clearRect(
       0,
       0,
-      0,
+      width,
       height
     );
 
-  background.addColorStop(
-    0,
-    "rgba(125, 215, 255, 0.24)"
-  );
 
-  background.addColorStop(
-    0.5,
-    "rgba(50, 155, 220, 0.18)"
-  );
+    /* =========================================================
+       LIGHT BLUE ILLUMINATED DISPLAY
+    ========================================================= */
 
-  background.addColorStop(
-    1,
-    "rgba(10, 55, 90, 0.30)"
-  );
-
-  ctx.fillStyle =
-    background;
-
-  ctx.fillRect(
-    0,
-    0,
-    width,
-    height
-  );
-
-
-  /* =========================================================
-     FREQUENCY RANGE
-     Full useful music spectrum
-  ========================================================= */
-
-  const sampleRate =
-    audioContext
-      ? audioContext.sampleRate
-      : 48000;
-
-  const nyquist =
-    sampleRate / 2;
-
-  const minFrequency =
-    40;
-
-  const maxFrequency =
-    Math.min(
-      20000,
-      nyquist * 0.95
-    );
-
-
-  /* =========================================================
-     DISPLAY AREA
-  ========================================================= */
-
-  const plotTop =
-    height * 0.08;
-
-  const plotBottom =
-    height * 0.76;
-
-  const plotHeight =
-    plotBottom -
-    plotTop;
-
-  const pointCount =
-    Math.max(
-      72,
-      Math.floor(
-        width / 4
-      )
-    );
-
-  const points = [];
-
-
-  /* =========================================================
-     LOGARITHMIC FREQUENCY SAMPLING
-
-     Bass gets physical space on the left,
-     mids live in the center,
-     highs remain active to 20 kHz.
-  ========================================================= */
-
-  for (
-    let i = 0;
-    i < pointCount;
-    i += 1
-  ) {
-
-    const position =
-      i /
-      (pointCount - 1);
-
-    const frequency =
-      minFrequency *
-      Math.pow(
-        maxFrequency /
-        minFrequency,
-        position
-      );
-
-    const exactBin =
-      frequency /
-      nyquist *
-      (frequencyData.length - 1);
-
-    const lowerBin =
-      Math.floor(
-        exactBin
-      );
-
-    const upperBin =
-      Math.min(
-        lowerBin + 1,
-        frequencyData.length - 1
-      );
-
-    const fraction =
-      exactBin -
-      lowerBin;
-
-    const lowerValue =
-      frequencyData[
-        Math.max(
-          0,
-          lowerBin
-        )
-      ];
-
-    const upperValue =
-      frequencyData[
-        upperBin
-      ];
-
-    const interpolatedValue =
-      lowerValue +
-      (
-        upperValue -
-        lowerValue
-      ) *
-      fraction;
-
-    let normalized =
-      interpolatedValue /
-      255;
-
-
-    /*
-       Gentle visual compensation.
-
-       High frequencies naturally contain
-       less energy than bass, so this keeps
-       real treble activity visible without
-       inventing fake frequency movement.
-    */
-
-  /* =========================================================
-   VISUAL SPECTRUM BALANCE
-
-   Keep the lows and low-mids from riding the ceiling,
-   while preserving natural dips and peaks.
-========================================================= */
-
-const lowMidTrim =
-  frequency < 120
-    ? 0.62
-    : frequency < 250
-      ? 0.66
-      : frequency < 500
-        ? 0.72
-        : frequency < 1000
-          ? 0.78
-          : frequency < 2000
-            ? 0.86
-            : 0.92;
-
-const highDetailLift =
-  frequency >= 2000
-    ? 1 +
-      (
-        (
-          Math.min(
-            frequency,
-            16000
-          ) -
-          2000
-        ) /
-        14000
-      ) *
-      0.12
-    : 1;
-
-normalized =
-  Math.min(
-    1,
-    normalized *
-    lowMidTrim *
-    highDetailLift
-  );
-
-normalized =
-  Math.pow(
-    normalized,
-    1.15
-  );
-
-/* Leave visible headroom at the top */
-
-normalized *= 0.88;
-
-
-    const x =
-      position *
-      width;
-
-    const y =
-      plotBottom -
-      (
-        normalized *
-        plotHeight
-      );
-
-    points.push({
-      x,
-      y
-    });
-
-  }
-
-
-  /* =========================================================
-     BLUE ENERGY FILL UNDER THE WAVE
-  ========================================================= */
-
-  if (
-    points.length >
-    1
-  ) {
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-      points[0].x,
-      plotBottom
-    );
-
-    ctx.lineTo(
-      points[0].x,
-      points[0].y
-    );
-
-    for (
-      let i = 1;
-      i < points.length - 1;
-      i += 1
-    ) {
-
-      const current =
-        points[i];
-
-      const next =
-        points[i + 1];
-
-      const midX =
-        (
-          current.x +
-          next.x
-        ) / 2;
-
-      const midY =
-        (
-          current.y +
-          next.y
-        ) / 2;
-
-      ctx.quadraticCurveTo(
-        current.x,
-        current.y,
-        midX,
-        midY
-      );
-
-    }
-
-    const lastPoint =
-      points[
-        points.length - 1
-      ];
-
-    ctx.lineTo(
-      lastPoint.x,
-      lastPoint.y
-    );
-
-    ctx.lineTo(
-      lastPoint.x,
-      plotBottom
-    );
-
-    ctx.closePath();
-
-
-    const waveFill =
+    const background =
       ctx.createLinearGradient(
         0,
-        plotTop,
         0,
-        plotBottom
+        0,
+        height
       );
 
-    waveFill.addColorStop(
+    background.addColorStop(
       0,
-      "rgba(220, 245, 255, 0.32)"
+      "rgba(125, 215, 255, 0.24)"
     );
 
-    waveFill.addColorStop(
-      0.45,
-      "rgba(90, 195, 255, 0.22)"
+    background.addColorStop(
+      0.5,
+      "rgba(50, 155, 220, 0.18)"
     );
 
-    waveFill.addColorStop(
+    background.addColorStop(
       1,
-      "rgba(30, 125, 205, 0.05)"
+      "rgba(10, 55, 90, 0.30)"
     );
 
     ctx.fillStyle =
-      waveFill;
+      background;
 
-    ctx.fill();
+    ctx.fillRect(
+      0,
+      0,
+      width,
+      height
+    );
 
 
     /* =========================================================
-       WHITE REACTIVE FREQUENCY WAVE
+       FREQUENCY RANGE
     ========================================================= */
 
-    ctx.beginPath();
+    const sampleRate =
+      audioContext
+        ? audioContext.sampleRate
+        : 48000;
 
-    ctx.moveTo(
-      points[0].x,
-      points[0].y
-    );
+    const nyquist =
+      sampleRate / 2;
+
+    const minFrequency =
+      40;
+
+    const maxFrequency =
+      Math.min(
+        20000,
+        nyquist * 0.95
+      );
+
+
+    const plotTop =
+      height * 0.08;
+
+    const plotBottom =
+      height * 0.76;
+
+    const plotHeight =
+      plotBottom -
+      plotTop;
+
+    const pointCount =
+      Math.max(
+        72,
+        Math.floor(
+          width / 4
+        )
+      );
+
+    const points = [];
+
 
     for (
-      let i = 1;
-      i < points.length - 1;
+      let i = 0;
+      i < pointCount;
       i += 1
     ) {
 
-      const current =
-        points[i];
-
-      const next =
-        points[i + 1];
-
-      const midX =
-        (
-          current.x +
-          next.x
-        ) / 2;
-
-      const midY =
-        (
-          current.y +
-          next.y
-        ) / 2;
-
-      ctx.quadraticCurveTo(
-        current.x,
-        current.y,
-        midX,
-        midY
-      );
-
-    }
-
-    ctx.lineTo(
-      lastPoint.x,
-      lastPoint.y
-    );
-
-    ctx.strokeStyle =
-      "rgba(245, 252, 255, 0.98)";
-
-    ctx.lineWidth =
-      Math.max(
-        1.4,
-        height * 0.018
-      );
-
-    ctx.lineJoin =
-      "round";
-
-    ctx.lineCap =
-      "round";
-
-    ctx.shadowColor =
-      "rgba(170, 230, 255, 0.95)";
-
-    ctx.shadowBlur =
-      Math.max(
-        5,
-        height * 0.08
-      );
-
-    ctx.stroke();
-
-    ctx.shadowBlur =
-      0;
-
-  }
-
-
-  /* =========================================================
-     FREQUENCY LABELS
-     DISPLAY ONLY — NOT CONTROLS
-  ========================================================= */
-
-  const labels = [
-    { frequency: 60, label: "60" },
-    { frequency: 120, label: "120" },
-    { frequency: 250, label: "250" },
-    { frequency: 500, label: "500" },
-    { frequency: 1000, label: "1K" },
-    { frequency: 2000, label: "2K" },
-    { frequency: 4000, label: "4K" },
-    { frequency: 8000, label: "8K" },
-    { frequency: 16000, label: "16K" }
-  ];
-
-  ctx.textAlign =
-    "center";
-
-  ctx.textBaseline =
-    "middle";
-
-  ctx.font =
-    `${Math.max(
-      8,
-      height * 0.095
-    )}px Arial`;
-
-  ctx.fillStyle =
-    "rgba(225, 245, 255, 0.60)";
-
-  ctx.strokeStyle =
-    "rgba(210, 240, 255, 0.10)";
-
-  ctx.lineWidth =
-    1;
-
-
-  labels.forEach(
-    ({
-      frequency,
-      label
-    }) => {
-
-      if (
-        frequency >
-        maxFrequency
-      ) {
-        return;
-      }
-
       const position =
-        Math.log(
-          frequency /
-          minFrequency
-        ) /
-        Math.log(
+        i /
+        (pointCount - 1);
+
+      const frequency =
+        minFrequency *
+        Math.pow(
           maxFrequency /
-          minFrequency
+          minFrequency,
+          position
         );
+
+      const exactBin =
+        frequency /
+        nyquist *
+        (frequencyData.length - 1);
+
+      const lowerBin =
+        Math.floor(
+          exactBin
+        );
+
+      const upperBin =
+        Math.min(
+          lowerBin + 1,
+          frequencyData.length - 1
+        );
+
+      const fraction =
+        exactBin -
+        lowerBin;
+
+      const lowerValue =
+        frequencyData[
+          Math.max(
+            0,
+            lowerBin
+          )
+        ];
+
+      const upperValue =
+        frequencyData[
+          upperBin
+        ];
+
+      const interpolatedValue =
+        lowerValue +
+        (
+          upperValue -
+          lowerValue
+        ) *
+        fraction;
+
+      let normalized =
+        interpolatedValue /
+        255;
+
+
+      const lowMidTrim =
+        frequency < 120
+          ? 0.62
+          : frequency < 250
+            ? 0.66
+            : frequency < 500
+              ? 0.72
+              : frequency < 1000
+                ? 0.78
+                : frequency < 2000
+                  ? 0.86
+                  : 0.92;
+
+      const highDetailLift =
+        frequency >= 2000
+          ? 1 +
+            (
+              (
+                Math.min(
+                  frequency,
+                  16000
+                ) -
+                2000
+              ) /
+              14000
+            ) *
+            0.12
+          : 1;
+
+      normalized =
+        Math.min(
+          1,
+          normalized *
+          lowMidTrim *
+          highDetailLift
+        );
+
+      normalized =
+        Math.pow(
+          normalized,
+          1.15
+        );
+
+      normalized *=
+        0.88;
 
       const x =
         position *
         width;
 
+      const y =
+        plotBottom -
+        (
+          normalized *
+          plotHeight
+        );
+
+      points.push({
+        x,
+        y
+      });
+
+    }
+
+
+    if (
+      points.length >
+      1
+    ) {
 
       ctx.beginPath();
 
       ctx.moveTo(
-        x,
+        points[0].x,
         plotBottom
       );
 
       ctx.lineTo(
-        x,
-        plotTop
+        points[0].x,
+        points[0].y
       );
+
+      for (
+        let i = 1;
+        i < points.length - 1;
+        i += 1
+      ) {
+
+        const current =
+          points[i];
+
+        const next =
+          points[i + 1];
+
+        const midX =
+          (
+            current.x +
+            next.x
+          ) / 2;
+
+        const midY =
+          (
+            current.y +
+            next.y
+          ) / 2;
+
+        ctx.quadraticCurveTo(
+          current.x,
+          current.y,
+          midX,
+          midY
+        );
+
+      }
+
+      const lastPoint =
+        points[
+          points.length - 1
+        ];
+
+      ctx.lineTo(
+        lastPoint.x,
+        lastPoint.y
+      );
+
+      ctx.lineTo(
+        lastPoint.x,
+        plotBottom
+      );
+
+      ctx.closePath();
+
+      const waveFill =
+        ctx.createLinearGradient(
+          0,
+          plotTop,
+          0,
+          plotBottom
+        );
+
+      waveFill.addColorStop(
+        0,
+        "rgba(220, 245, 255, 0.32)"
+      );
+
+      waveFill.addColorStop(
+        0.45,
+        "rgba(90, 195, 255, 0.22)"
+      );
+
+      waveFill.addColorStop(
+        1,
+        "rgba(30, 125, 205, 0.05)"
+      );
+
+      ctx.fillStyle =
+        waveFill;
+
+      ctx.fill();
+
+      ctx.beginPath();
+
+      ctx.moveTo(
+        points[0].x,
+        points[0].y
+      );
+
+      for (
+        let i = 1;
+        i < points.length - 1;
+        i += 1
+      ) {
+
+        const current =
+          points[i];
+
+        const next =
+          points[i + 1];
+
+        const midX =
+          (
+            current.x +
+            next.x
+          ) / 2;
+
+        const midY =
+          (
+            current.y +
+            next.y
+          ) / 2;
+
+        ctx.quadraticCurveTo(
+          current.x,
+          current.y,
+          midX,
+          midY
+        );
+
+      }
+
+      ctx.lineTo(
+        lastPoint.x,
+        lastPoint.y
+      );
+
+      ctx.strokeStyle =
+        "rgba(245, 252, 255, 0.98)";
+
+      ctx.lineWidth =
+        Math.max(
+          1.4,
+          height * 0.018
+        );
+
+      ctx.lineJoin =
+        "round";
+
+      ctx.lineCap =
+        "round";
+
+      ctx.shadowColor =
+        "rgba(170, 230, 255, 0.95)";
+
+      ctx.shadowBlur =
+        Math.max(
+          5,
+          height * 0.08
+        );
 
       ctx.stroke();
 
-
-      ctx.fillText(
-        label,
-        x,
-        height * 0.89
-      );
+      ctx.shadowBlur =
+        0;
 
     }
-  );
 
-}
+
+    const labels = [
+      { frequency: 60, label: "60" },
+      { frequency: 120, label: "120" },
+      { frequency: 250, label: "250" },
+      { frequency: 500, label: "500" },
+      { frequency: 1000, label: "1K" },
+      { frequency: 2000, label: "2K" },
+      { frequency: 4000, label: "4K" },
+      { frequency: 8000, label: "8K" },
+      { frequency: 16000, label: "16K" }
+    ];
+
+    ctx.textAlign =
+      "center";
+
+    ctx.textBaseline =
+      "middle";
+
+    ctx.font =
+      `${Math.max(
+        8,
+        height * 0.095
+      )}px Arial`;
+
+    ctx.fillStyle =
+      "rgba(225, 245, 255, 0.60)";
+
+    ctx.strokeStyle =
+      "rgba(210, 240, 255, 0.10)";
+
+    ctx.lineWidth =
+      1;
+
+    labels.forEach(
+      ({
+        frequency,
+        label
+      }) => {
+
+        if (
+          frequency >
+          maxFrequency
+        ) {
+          return;
+        }
+
+        const position =
+          Math.log(
+            frequency /
+            minFrequency
+          ) /
+          Math.log(
+            maxFrequency /
+            minFrequency
+          );
+
+        const x =
+          position *
+          width;
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+          x,
+          plotBottom
+        );
+
+        ctx.lineTo(
+          x,
+          plotTop
+        );
+
+        ctx.stroke();
+
+        ctx.fillText(
+          label,
+          x,
+          height * 0.89
+        );
+
+      }
+    );
+
+  }
+
 
   function drawAnalogVU(
     timeData
@@ -1647,11 +1576,9 @@ normalized *= 0.88;
       ) /
       100;
 
-
     updateVolumeHardware(
       volumeSlider.value
     );
-
 
     volumeSlider
       .addEventListener(
@@ -1664,14 +1591,11 @@ normalized *= 0.88;
             ) /
             100;
 
-
           updateVolumeHardware(
             volumeSlider.value
           );
 
-
           await resumeAudioContext();
-
 
           if (
             audioGraphReady &&
@@ -1701,486 +1625,1239 @@ normalized *= 0.88;
 
 
   /* =========================================================
-     PLAYER CONTROLS
+     CHANNEL HEROES / TRACK LIBRARY
   ========================================================= */
 
-  if (
-    playPause &&
-    audio
+  const heroSources = {
+
+    lobby:
+      "assets/Hero-Radio.webp",
+
+    "hip-hop":
+      "assets/hero-radio-hiphop.webp",
+
+    rnb:
+      "assets/hero-radio-rnb.webp",
+
+    house:
+      "assets/hero-radio-house.webp",
+
+    reggae:
+      "assets/hero-radio-reggae.webp",
+
+    gospel:
+      "assets/hero-radio-gospel.webp"
+
+  };
+
+
+  const trackLibrary = {
+
+    "son-of-a-preacher-man": {
+      title: "Son of a Preacher Man",
+      artist: "Searvaxter Charles Gardner Jr.",
+      artwork: "assets/son-of-a-preacher-man-cover.png",
+      src: "assets/audio/son-of-a-preacher-man.mp3",
+      video: "https://pub-2e91fa0475164dd8ab4072317209d9ac.r2.dev/Son-of-a-Preacher-Man.mp4",
+      preset: "music"
+    },
+
+    flo: {
+      title: "Flo",
+      artist: "DJ Silvah",
+      artwork: "assets/Flo album art.png",
+      src: "assets/audio/01-flo.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    mist: {
+      title: "Mist",
+      artist: "DJ Silvah",
+      artwork: "assets/Mist album art.png",
+      src: "assets/audio/02-mist.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    kiss: {
+      title: "Kiss",
+      artist: "DJ Silvah",
+      artwork: "assets/Kiss album art.png",
+      src: "assets/audio/03-kiss.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    "london-poppy": {
+      title: "London Poppy",
+      artist: "DJ Silvah",
+      artwork: "assets/London Poppy album art.png",
+      src: "assets/audio/04-london-poppy.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    elle: {
+      title: "Elle",
+      artist: "DJ Silvah",
+      artwork: "assets/Elle Album Art.png",
+      src: "assets/audio/05-elle.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    "new-york-moods": {
+      title: "New York Moods",
+      artist: "DJ Silvah",
+      artwork: "assets/New York Moods album Art.png",
+      src: "assets/audio/06-new-york-moods.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    "j-hollands": {
+      title: "J-Hollands",
+      artist: "DJ Silvah",
+      artwork: "assets/J-Jollands Album Art.png",
+      src: "assets/audio/07-j-hollands.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    tipsy: {
+      title: "Tipsy",
+      artist: "DJ Silvah",
+      artwork: "",
+      src: "assets/audio/08-tipsy.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    faded: {
+      title: "Faded",
+      artist: "DJ Silvah",
+      artwork: "",
+      src: "assets/audio/09-faded.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    "sex-me-next": {
+      title: "Sex Me Next",
+      artist: "DJ Silvah",
+      artwork: "",
+      src: "assets/audio/10-sex-me-next.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    "every-version-of-me": {
+      title: "Every Version of Me",
+      artist: "DJ Silvah",
+      artwork: "assets/11-every-version-of-me-cover.png",
+      src: "assets/audio/11-every-version-of-me.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    "cajun-drummer": {
+      title: "Cajun Drummer",
+      artist: "DJ Silvah",
+      artwork: "assets/12-cajun-drummer-cover.png",
+      src: "assets/audio/12-cajun-drummer.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    java: {
+      title: "Java",
+      artist: "DJ Silvah",
+      artwork: "assets/13-java-cover.png",
+      src: "assets/audio/13-java.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    "k-hall": {
+      title: "K-Hall",
+      artist: "DJ Silvah",
+      artwork: "assets/14-k-hall-cover.png",
+      src: "assets/audio/14-k-hall.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    "still-becoming": {
+      title: "Still Becoming",
+      artist: "DJ Silvah",
+      artwork: "assets/15-still-becoming-cover.png",
+      src: "assets/audio/15-still-becoming.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    "audrey-lane": {
+      title: "Audrey Lane",
+      artist: "DJ Silvah",
+      artwork: "assets/16-audrey-lane-cover.png",
+      src: "assets/audio/16-audrey-lane.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    "cold-steel-drum-section": {
+      title: "Cold Steel Drum Section",
+      artist: "DJ Silvah",
+      artwork: "assets/17-cold-steel-drum-section-cover.png",
+      src: "assets/audio/17-cold-steel-drum-section.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    "yahz-chyld-318": {
+      title: "Yahz Chyld 318",
+      artist: "DJ Silvah",
+      artwork: "assets/18-yahz-chyld-318-cover.png",
+      src: "assets/audio/18-yahz-chyld-318.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    "university-park-2": {
+      title: "University Park 2",
+      artist: "DJ Silvah",
+      artwork: "assets/19-university-park-2-cover.png",
+      src: "assets/audio/19-university-park-2.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    "university-park": {
+      title: "University Park",
+      artist: "DJ Silvah",
+      artwork: "assets/20-university-park-cover.png",
+      src: "assets/audio/20-university-park.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    yahcemity: {
+      title: "Yahcemity",
+      artist: "DJ Silvah",
+      artwork: "assets/21-yahcemity-cover.png",
+      src: "assets/audio/21-yahcemity.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    pause: {
+      title: "Pause",
+      artist: "DJ Silvah",
+      artwork: "assets/Pause Art.png",
+      src: "assets/audio/22-pause.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    "smoke-and-prayer": {
+      title: "Smoke & Prayer",
+      artist: "DJ Silvah",
+      artwork: "assets/Smoke & Prayer art.png",
+      src: "assets/audio/23-smoke-&- prayer.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    "same-sun": {
+      title: "Same Sun",
+      artist: "DJ Silvah",
+      artwork: "assets/Same Sun art.png",
+      src: "assets/audio/24-same-sun.mp3",
+      video: "",
+      preset: "music"
+    }
+
+  };
+
+
+  const channelConfig = {
+
+    lobby: {
+      label: "Main Lobby",
+      hero: heroSources.lobby,
+      adGroup: "clean",
+
+      tracks: [
+        trackLibrary.flo,
+        trackLibrary.mist,
+        trackLibrary.kiss,
+        trackLibrary["london-poppy"],
+        trackLibrary.elle,
+        trackLibrary["new-york-moods"],
+        trackLibrary["j-hollands"],
+        trackLibrary["every-version-of-me"],
+        trackLibrary["cajun-drummer"],
+        trackLibrary.java,
+        trackLibrary["k-hall"],
+        trackLibrary["still-becoming"],
+        trackLibrary["audrey-lane"],
+        trackLibrary["cold-steel-drum-section"],
+        trackLibrary["yahz-chyld-318"],
+        trackLibrary["university-park-2"],
+        trackLibrary["university-park"],
+        trackLibrary.yahcemity,
+        trackLibrary.pause,
+        trackLibrary["smoke-and-prayer"],
+        trackLibrary["same-sun"]
+      ]
+    },
+
+    "hip-hop": {
+      label: "Hip Hop",
+      hero: heroSources["hip-hop"],
+      adGroup: "nightlife",
+      tracks: []
+    },
+
+    rnb: {
+      label: "R&B",
+      hero: heroSources.rnb,
+      adGroup: "nightlife",
+
+      tracks: [
+        trackLibrary.tipsy,
+        trackLibrary.faded,
+        trackLibrary["sex-me-next"]
+      ]
+    },
+
+    house: {
+      label: "House",
+      hero: heroSources.house,
+      adGroup: "nightlife",
+      tracks: []
+    },
+
+    reggae: {
+      label: "Reggae",
+      hero: heroSources.reggae,
+      adGroup: "clean",
+      tracks: []
+    },
+
+    gospel: {
+      label: "Gospel",
+      hero: heroSources.gospel,
+      adGroup: "clean",
+
+      tracks: [
+        trackLibrary["son-of-a-preacher-man"]
+      ]
+    }
+
+  };
+
+
+  /* =========================================================
+     LIVE STATION / STATION IDS
+  ========================================================= */
+
+  const stationIds = [
+
+    {
+      title: "You're Listening to AV Junki Radio",
+      artist: "AV Junki Radio",
+      artwork: "",
+      src: "assets/audio/ids/AVJ_ID_01_Youre_Listening.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    {
+      title: "Where the Vibe Lives",
+      artist: "AV Junki Radio",
+      artwork: "",
+      src: "assets/audio/ids/AVJ_ID_02_Where_The_Vibe_Lives.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    {
+      title: "This Is AV Junki Radio",
+      artist: "AV Junki Radio",
+      artwork: "",
+      src: "assets/audio/ids/AVJ_ID_03_This_Is_AV_Junki_Radio.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    {
+      title: "Stay Right Here",
+      artist: "AV Junki Radio",
+      artwork: "",
+      src: "assets/audio/ids/AVJ_ID_04_Stay_Right_Here.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    {
+      title: "Smooth Jazz to Soul",
+      artist: "AV Junki Radio",
+      artwork: "",
+      src: "assets/audio/ids/AVJ_ID_05_Smooth_Jazz_To_Soul.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    {
+      title: "Music for the Moment",
+      artist: "AV Junki Radio",
+      artwork: "",
+      src: "assets/audio/ids/AVJ_ID_06_Music_For_The_Moment.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    {
+      title: "No Rush, No Noise",
+      artist: "AV Junki Radio",
+      artwork: "",
+      src: "assets/audio/ids/AVJ_ID_07_No_Rush_No_Noise.mp3",
+      video: "",
+      preset: "music"
+    },
+
+    {
+      title: "Settle In",
+      artist: "AV Junki Radio",
+      artwork: "",
+      src: "assets/audio/ids/AVJ_ID_08_Settle_In.mp3",
+      video: "",
+      preset: "music"
+    }
+
+  ];
+
+
+  const liveDurationSeconds = {
+
+    "assets/audio/01-flo.mp3":
+      179.640,
+
+    "assets/audio/02-mist.mp3":
+      213.024,
+
+    "assets/audio/03-kiss.mp3":
+      179.544,
+
+    "assets/audio/04-london-poppy.mp3":
+      202.440,
+
+    "assets/audio/05-elle.mp3":
+      179.592,
+
+    "assets/audio/06-new-york-moods.mp3":
+      404.040,
+
+    "assets/audio/07-j-hollands.mp3":
+      254.232,
+
+    "assets/audio/11-every-version-of-me.mp3":
+      228.384,
+
+    "assets/audio/12-cajun-drummer.mp3":
+      224.832,
+
+    "assets/audio/13-java.mp3":
+      224.784,
+
+    "assets/audio/14-k-hall.mp3":
+      224.784,
+
+    "assets/audio/15-still-becoming.mp3":
+      246.480,
+
+    "assets/audio/16-audrey-lane.mp3":
+      224.832,
+
+    "assets/audio/17-cold-steel-drum-section.mp3":
+      224.544,
+
+    "assets/audio/18-yahz-chyld-318.mp3":
+      224.832,
+
+    "assets/audio/19-university-park-2.mp3":
+      224.880,
+
+    "assets/audio/20-university-park.mp3":
+      224.832,
+
+    "assets/audio/21-yahcemity.mp3":
+      224.664,
+
+    "assets/audio/22-pause.mp3":
+      324.024,
+
+    "assets/audio/23-smoke-&- prayer.mp3":
+      318.432,
+
+    "assets/audio/24-same-sun.mp3":
+      302.664,
+
+    "assets/audio/ids/AVJ_ID_01_Youre_Listening.mp3":
+      4.101224,
+
+    "assets/audio/ids/AVJ_ID_02_Where_The_Vibe_Lives.mp3":
+      7.601633,
+
+    "assets/audio/ids/AVJ_ID_03_This_Is_AV_Junki_Radio.mp3":
+      3.082449,
+
+    "assets/audio/ids/AVJ_ID_04_Stay_Right_Here.mp3":
+      4.754286,
+
+    "assets/audio/ids/AVJ_ID_05_Smooth_Jazz_To_Soul.mp3":
+      11.441633,
+
+    "assets/audio/ids/AVJ_ID_06_Music_For_The_Moment.mp3":
+      10.344490,
+
+    "assets/audio/ids/AVJ_ID_07_No_Rush_No_Noise.mp3":
+      14.602449,
+
+    "assets/audio/ids/AVJ_ID_08_Settle_In.mp3":
+      14.602449
+
+  };
+
+
+  const LIVE_STATION_CHANNEL =
+    "lobby";
+
+  const LIVE_STATION_EPOCH_MS =
+    Date.parse(
+      "2026-09-20T00:00:00Z"
+    );
+
+  const LIVE_STATION_ROUNDS =
+    17;
+
+  const LIVE_STATION_SONGS_PER_ID =
+    4;
+
+  const LIVE_STATION_DRIFT_TOLERANCE =
+    1.25;
+
+  let liveStationProgram =
+    [];
+
+  let liveStationDuration =
+    0;
+
+
+  function hashStationSeed(
+    value
   ) {
 
-    playPause
-      .addEventListener(
-        "click",
-        async () => {
+    let hash =
+      2166136261;
 
-          if (
-            !hasAudioSource()
-          ) {
-
-            setMainstreamState(
-              false
-            );
-
-            setStatus(
-              "Mainstream is off air — stream source not connected yet."
-            );
-
-            return;
-
-          }
-
-
-          await resumeAudioContext();
-
-
-          try {
-
-            if (
-              audio.paused
-            ) {
-
-              await audio.play();
-
-            } else {
-
-              audio.pause();
-
-            }
-
-          } catch (error) {
-
-            console.error(
-              "AV Junki Radio playback error:",
-              error
-            );
-
-            setMainstreamState(
-              false
-            );
-
-            setStatus(
-              "Unable to start the audio stream."
-            );
-
-          }
-
-        }
+    const source =
+      String(
+        value
       );
 
+    for (
+      let index = 0;
+      index < source.length;
+      index += 1
+    ) {
 
-    audio.addEventListener(
-      "play",
-      () => {
-
-        playPause.textContent =
-          "❚❚";
-
-        playPause.setAttribute(
-          "aria-label",
-          "Pause"
+      hash ^=
+        source.charCodeAt(
+          index
         );
 
-        setMainstreamState(
-          true
+      hash =
+        Math.imul(
+          hash,
+          16777619
         );
 
-      }
-    );
+    }
 
-
-    audio.addEventListener(
-      "pause",
-      () => {
-
-        playPause.textContent =
-          "▶";
-
-        playPause.setAttribute(
-          "aria-label",
-          "Play"
-        );
-
-        setMainstreamState(
-          false
-        );
-
-      }
-    );
-
-
-    audio.addEventListener(
-      "error",
-      () => {
-
-        setMainstreamState(
-          false
-        );
-
-      }
-    );
+    return hash >>> 0;
 
   }
 
 
-  if (
-    mainstreamStatus
+  function seededStationRandom(
+    seed
   ) {
 
-    mainstreamStatus
-      .addEventListener(
-        "click",
-        () => {
+    let state =
+      seed >>> 0;
 
-          setStatus(
-            audio &&
-            !audio.paused &&
-            hasAudioSource()
+    return () => {
 
-              ? "Mainstream is on air."
+      state +=
+        0x6D2B79F5;
 
-              : "Mainstream is off air."
+      let value =
+        state;
+
+      value =
+        Math.imul(
+          value ^
+          (value >>> 15),
+          value | 1
+        );
+
+      value ^=
+        value +
+        Math.imul(
+          value ^
+          (value >>> 7),
+          value | 61
+        );
+
+      return (
+        (
+          value ^
+          (value >>> 14)
+        ) >>> 0
+      ) / 4294967296;
+
+    };
+
+  }
+
+
+  function seededShuffle(
+    items,
+    seedLabel
+  ) {
+
+    const shuffled =
+      [
+        ...items
+      ];
+
+    const random =
+      seededStationRandom(
+        hashStationSeed(
+          seedLabel
+        )
+      );
+
+    for (
+      let index =
+        shuffled.length - 1;
+
+      index > 0;
+
+      index -= 1
+    ) {
+
+      const swapIndex =
+        Math.floor(
+          random() *
+          (index + 1)
+        );
+
+      [
+        shuffled[index],
+        shuffled[swapIndex]
+      ] = [
+        shuffled[swapIndex],
+        shuffled[index]
+      ];
+
+    }
+
+    return shuffled;
+
+  }
+
+
+  function getRequiredDuration(
+    track
+  ) {
+
+    const duration =
+      liveDurationSeconds[
+        track.src
+      ];
+
+    if (
+      !Number.isFinite(
+        duration
+      ) ||
+      duration <= 0
+    ) {
+
+      console.error(
+        "AV Junki Radio missing duration:",
+        track.src
+      );
+
+      return 240;
+
+    }
+
+    return duration;
+
+  }
+
+
+  function buildStationIdQueue(
+    count
+  ) {
+
+    const queue =
+      [];
+
+    let previousSource =
+      "";
+
+    let deckNumber =
+      0;
+
+    while (
+      queue.length <
+      count
+    ) {
+
+      const deck =
+        seededShuffle(
+          stationIds,
+          `AVJ-ID-DECK-${deckNumber}`
+        );
+
+      if (
+        previousSource &&
+        deck.length > 1 &&
+        deck[0].src ===
+          previousSource
+      ) {
+
+        [
+          deck[0],
+          deck[1]
+        ] = [
+          deck[1],
+          deck[0]
+        ];
+
+      }
+
+      deck.forEach(
+        (stationId) => {
+
+          queue.push(
+            stationId
           );
 
         }
       );
 
+      previousSource =
+        deck[
+          deck.length - 1
+        ].src;
+
+      deckNumber +=
+        1;
+
+    }
+
+    return queue.slice(
+      0,
+      count
+    );
+
   }
 
 
-  /* =========================================================
-     CHANNEL HEROES / PLAYLISTS / MUSIC VIDEO
-  ========================================================= */
+  function buildLiveStationProgram() {
 
-const heroSources = {
+    const lobbyTracks =
+      channelConfig[
+        LIVE_STATION_CHANNEL
+      ].tracks.map(
+        (track, index) => ({
 
-  lobby:
-    "assets/Hero-Radio.webp",
+          track,
 
-  "hip-hop":
-    "assets/hero-radio-hiphop.webp",
+          playlistIndex:
+            index
 
-  rnb:
-    "assets/hero-radio-rnb.webp",
+        })
+      );
 
-  house:
-    "assets/hero-radio-house.webp",
+    const idsPerRound =
+      Math.floor(
+        lobbyTracks.length /
+        LIVE_STATION_SONGS_PER_ID
+      );
 
-  reggae:
-    "assets/hero-radio-reggae.webp",
+    const idQueue =
+      buildStationIdQueue(
+        idsPerRound *
+        LIVE_STATION_ROUNDS
+      );
 
-  gospel:
-    "assets/hero-radio-gospel.webp"
+    const program =
+      [];
 
-};
+    let stationIdIndex =
+      0;
 
-const trackLibrary = {
+    let previousLastSource =
+      "";
 
-  "son-of-a-preacher-man": {
-    title: "Son of a Preacher Man",
-    artist: "Searvaxter Charles Gardner Jr.",
-    artwork: "assets/son-of-a-preacher-man-cover.png",
-    src: "assets/audio/son-of-a-preacher-man.mp3",
-    video: "https://pub-2e91fa0475164dd8ab4072317209d9ac.r2.dev/Son-of-a-Preacher-Man.mp4",
-    preset: "music"
-  },
+    for (
+      let round = 0;
 
-  flo: {
-    title: "Flo",
-    artist: "DJ Silvah",
-    artwork: "assets/Flo album art.png",
-    src: "assets/audio/01-flo.mp3",
-    video: "",
-    preset: "music"
-  },
+      round <
+      LIVE_STATION_ROUNDS;
 
-  mist: {
-    title: "Mist",
-    artist: "DJ Silvah",
-    artwork: "assets/Mist album art.png",
-    src: "assets/audio/02-mist.mp3",
-    video: "",
-    preset: "music"
-  },
+      round += 1
+    ) {
 
-  kiss: {
-    title: "Kiss",
-    artist: "DJ Silvah",
-    artwork: "assets/Kiss album art.png",
-    src: "assets/audio/03-kiss.mp3",
-    video: "",
-    preset: "music"
-  },
+      const order =
+        seededShuffle(
+          lobbyTracks,
+          `AVJ-JAZZ-ROUND-${round}`
+        );
 
-  "london-poppy": {
-    title: "London Poppy",
-    artist: "DJ Silvah",
-    artwork: "assets/London Poppy album art.png",
-    src: "assets/audio/04-london-poppy.mp3",
-    video: "",
-    preset: "music"
-  },
+      if (
+        previousLastSource &&
+        order.length > 1 &&
+        order[0].track.src ===
+          previousLastSource
+      ) {
 
-  elle: {
-    title: "Elle",
-    artist: "DJ Silvah",
-    artwork: "assets/Elle Album Art.png",
-    src: "assets/audio/05-elle.mp3",
-    video: "",
-    preset: "music"
-  },
+        const swapIndex =
+          order.findIndex(
+            (entry) =>
 
-  "new-york-moods": {
-    title: "New York Moods",
-    artist: "DJ Silvah",
-   artwork: "assets/New York Moods album Art.png",
-    src: "assets/audio/06-new-york-moods.mp3",
-    video: "",
-    preset: "music"
-  },
+              entry.track.src !==
+              previousLastSource
+          );
 
-  "j-hollands": {
-    title: "J-Hollands",
-    artist: "DJ Silvah",
-    artwork: "assets/J-Jollands Album Art.png",
-    src: "assets/audio/07-j-hollands.mp3",
-    video: "",
-    preset: "music"
-  },
+        if (
+          swapIndex > 0
+        ) {
 
-  tipsy: {
-    title: "Tipsy",
-    artist: "DJ Silvah",
-    artwork: "",
-    src: "assets/audio/08-tipsy.mp3",
-    video: "",
-    preset: "music"
-  },
+          [
+            order[0],
+            order[swapIndex]
+          ] = [
+            order[swapIndex],
+            order[0]
+          ];
 
-  faded: {
-    title: "Faded",
-    artist: "DJ Silvah",
-    artwork: "",
-    src: "assets/audio/09-faded.mp3",
-    video: "",
-    preset: "music"
-  },
+        }
 
-  "sex-me-next": {
-    title: "Sex Me Next",
-    artist: "DJ Silvah",
-    artwork: "",
-    src: "assets/audio/10-sex-me-next.mp3",
-    video: "",
-    preset: "music"
-  },
-
-  "every-version-of-me": {
-    title: "Every Version of Me",
-    artist: "DJ Silvah",
-    artwork: "assets/11-every-version-of-me-cover.png",
-    src: "assets/audio/11-every-version-of-me.mp3",
-    video: "",
-    preset: "music"
-  },
-
-  "cajun-drummer": {
-    title: "Cajun Drummer",
-    artist: "DJ Silvah",
-    artwork: "assets/12-cajun-drummer-cover.png",
-    src: "assets/audio/12-cajun-drummer.mp3",
-    video: "",
-    preset: "music"
-  },
-
-  java: {
-    title: "Java",
-    artist: "DJ Silvah",
-    artwork: "assets/13-java-cover.png",
-    src: "assets/audio/13-java.mp3",
-    video: "",
-    preset: "music"
-  },
-
-  "k-hall": {
-    title: "K-Hall",
-    artist: "DJ Silvah",
-    artwork: "assets/14-k-hall-cover.png",
-    src: "assets/audio/14-k-hall.mp3",
-    video: "",
-    preset: "music"
-  },
-
-  "still-becoming": {
-    title: "Still Becoming",
-    artist: "DJ Silvah",
-    artwork: "assets/15-still-becoming-cover.png",
-    src: "assets/audio/15-still-becoming.mp3",
-    video: "",
-    preset: "music"
-  },
-
-  "audrey-lane": {
-    title: "Audrey Lane",
-    artist: "DJ Silvah",
-    artwork: "assets/16-audrey-lane-cover.png",
-    src: "assets/audio/16-audrey-lane.mp3",
-    video: "",
-    preset: "music"
-  },
-
-  "cold-steel-drum-section": {
-    title: "Cold Steel Drum Section",
-    artist: "DJ Silvah",
-    artwork: "assets/17-cold-steel-drum-section-cover.png",
-    src: "assets/audio/17-cold-steel-drum-section.mp3",
-    video: "",
-    preset: "music"
-  },
-
-  "yahz-chyld-318": {
-    title: "Yahz Chyld 318",
-    artist: "DJ Silvah",
-    artwork: "assets/18-yahz-chyld-318-cover.png",
-    src: "assets/audio/18-yahz-chyld-318.mp3",
-    video: "",
-    preset: "music"
-  },
-
-  "university-park-2": {
-    title: "University Park 2",
-    artist: "DJ Silvah",
-    artwork: "assets/19-university-park-2-cover.png",
-    src: "assets/audio/19-university-park-2.mp3",
-    video: "",
-    preset: "music"
-  },
-
-  "university-park": {
-    title: "University Park",
-    artist: "DJ Silvah",
-    artwork: "assets/20-university-park-cover.png",
-    src: "assets/audio/20-university-park.mp3",
-    video: "",
-    preset: "music"
-  },
-
-  yahcemity: {
-    title: "Yahcemity",
-    artist: "DJ Silvah",
-    artwork: "assets/21-yahcemity-cover.png",
-    src: "assets/audio/21-yahcemity.mp3",
-    video: "",
-    preset: "music"
-   },
-       pause: {
-    title: "Pause",
-    artist: "DJ Silvah",
-    artwork: "assets/Pause Art.png",
-    src: "assets/audio/22-pause.mp3",
-    video: "",
-    preset: "music"
-  },
-
-  "smoke-and-prayer": {
-    title: "Smoke & Prayer",
-    artist: "DJ Silvah",
-    artwork: "assets/Smoke & Prayer art.png",
-    src: "assets/audio/23-smoke-&- prayer.mp3",
-    video: "",
-    preset: "music"
-  },
-
-  "same-sun": {
-    title: "Same Sun",
-    artist: "DJ Silvah",
-    artwork: "assets/Same Sun art.png",
-    src: "assets/audio/24-same-sun.mp3",
-    video: "",
-    preset: "music"
-  }
-  
-
-};
+      }
 
 
-const channelConfig = {
+      order.forEach(
+        (
+          entry,
+          songIndex
+        ) => {
 
-  lobby: {
-    label: "Main Lobby",
-    hero: heroSources.lobby,
-    adGroup: "clean",
+          program.push({
 
-    tracks: [
-      trackLibrary.flo,
-      trackLibrary.mist,
-      trackLibrary.kiss,
-      trackLibrary["london-poppy"],
-      trackLibrary.elle,
-      trackLibrary["new-york-moods"],
-      trackLibrary["j-hollands"],
+            type:
+              "music",
 
-      trackLibrary["every-version-of-me"],
-      trackLibrary["cajun-drummer"],
-      trackLibrary.java,
-      trackLibrary["k-hall"],
-      trackLibrary["still-becoming"],
-      trackLibrary["audrey-lane"],
-      trackLibrary["cold-steel-drum-section"],
-      trackLibrary["yahz-chyld-318"],
-      trackLibrary["university-park-2"],
-      trackLibrary["university-park"],
-      trackLibrary.yahcemity,
-      trackLibrary.pause,
-      trackLibrary["smoke-and-prayer"],
-      trackLibrary["same-sun"]
-       ]
-  },
+            track:
+              entry.track,
 
-  "hip-hop": {
-    label: "Hip Hop",
-    hero: heroSources["hip-hop"],
-    adGroup: "nightlife",
-    tracks: []
-  },
+            playlistIndex:
+              entry.playlistIndex,
 
-  rnb: {
-    label: "R&B",
-    hero: heroSources.rnb,
-    adGroup: "nightlife",
+            duration:
+              getRequiredDuration(
+                entry.track
+              )
 
-    tracks: [
-      trackLibrary.tipsy,
-      trackLibrary.faded,
-      trackLibrary["sex-me-next"]
-    ]
-  },
+          });
 
-  house: {
-    label: "House",
-    hero: heroSources.house,
-    adGroup: "nightlife",
-    tracks: []
-  },
 
-  reggae: {
-    label: "Reggae",
-    hero: heroSources.reggae,
-    adGroup: "clean",
-    tracks: []
-  },
+          if (
+            (songIndex + 1) %
+              LIVE_STATION_SONGS_PER_ID ===
+              0 &&
+            stationIdIndex <
+              idQueue.length
+          ) {
 
-  gospel: {
-    label: "Gospel",
-    hero: heroSources.gospel,
-    adGroup: "clean",
+            const stationId =
+              idQueue[
+                stationIdIndex
+              ];
 
-    tracks: [
-      trackLibrary["son-of-a-preacher-man"]
-    ]
+            program.push({
+
+              type:
+                "id",
+
+              track:
+                stationId,
+
+              playlistIndex:
+                null,
+
+              duration:
+                getRequiredDuration(
+                  stationId
+                )
+
+            });
+
+            stationIdIndex +=
+              1;
+
+          }
+
+        }
+      );
+
+      previousLastSource =
+        order[
+          order.length - 1
+        ].track.src;
+
+    }
+
+
+    let cursor =
+      0;
+
+    program.forEach(
+      (item) => {
+
+        item.start =
+          cursor;
+
+        item.end =
+          cursor +
+          item.duration;
+
+        cursor =
+          item.end;
+
+      }
+    );
+
+    liveStationProgram =
+      program;
+
+    liveStationDuration =
+      cursor;
+
   }
 
-};
+
+  function getLiveStationPosition(
+    referenceMs =
+      Date.now()
+  ) {
+
+    if (
+      !liveStationProgram.length ||
+      liveStationDuration <= 0
+    ) {
+
+      return null;
+
+    }
+
+    const elapsedSeconds =
+      (
+        referenceMs -
+        LIVE_STATION_EPOCH_MS
+      ) /
+      1000;
+
+    const stationSecond =
+      (
+        (
+          elapsedSeconds %
+          liveStationDuration
+        ) +
+        liveStationDuration
+      ) %
+      liveStationDuration;
+
+    for (
+      let index = 0;
+
+      index <
+      liveStationProgram.length;
+
+      index += 1
+    ) {
+
+      const item =
+        liveStationProgram[
+          index
+        ];
+
+      if (
+        stationSecond <
+        item.end
+      ) {
+
+        return {
+
+          item,
+
+          offset:
+            stationSecond -
+            item.start
+
+        };
+
+      }
+
+    }
+
+    return {
+
+      item:
+        liveStationProgram[0],
+
+      offset:
+        0
+
+    };
+
+  }
+
+
+  function seekLiveAudio(
+    seconds
+  ) {
+
+    return new Promise(
+      (resolve) => {
+
+        if (
+          !audio
+        ) {
+
+          resolve();
+
+          return;
+
+        }
+
+        let finished =
+          false;
+
+        const applySeek =
+          () => {
+
+            if (
+              finished
+            ) {
+
+              return;
+
+            }
+
+            finished =
+              true;
+
+            const mediaDuration =
+              Number.isFinite(
+                audio.duration
+              )
+
+                ? audio.duration
+
+                : 0;
+
+            const maximum =
+              mediaDuration > 0.25
+
+                ? mediaDuration - 0.20
+
+                : seconds;
+
+            try {
+
+              audio.currentTime =
+                Math.max(
+                  0,
+                  Math.min(
+                    seconds,
+                    maximum
+                  )
+                );
+
+            } catch (error) {
+
+              console.warn(
+                "AV Junki Radio live seek warning:",
+                error
+              );
+
+            }
+
+            resolve();
+
+          };
+
+        if (
+          audio.readyState >=
+          1
+        ) {
+
+          applySeek();
+
+          return;
+
+        }
+
+        audio.addEventListener(
+          "loadedmetadata",
+          applySeek,
+          {
+            once: true
+          }
+        );
+
+        window.setTimeout(
+          applySeek,
+          4000
+        );
+
+      }
+    );
+
+  }
+
+
+  async function syncToLiveStation(
+    autoplay = false,
+    leadMilliseconds = 0
+  ) {
+
+    if (
+      activeChannel !==
+        LIVE_STATION_CHANNEL ||
+      !audio
+    ) {
+
+      return;
+
+    }
+
+    const position =
+      getLiveStationPosition(
+        Date.now() +
+        leadMilliseconds
+      );
+
+    if (
+      !position
+    ) {
+
+      return;
+
+    }
+
+    const item =
+      position.item;
+
+    const currentSource =
+      audio.getAttribute(
+        "src"
+      ) ||
+      "";
+
+    const sourceChanged =
+      currentSource !==
+      item.track.src;
+
+    if (
+      sourceChanged
+    ) {
+
+      window.setRadioTrack(
+        item.track
+      );
+
+    }
+
+    if (
+      item.type ===
+        "music" &&
+      Number.isInteger(
+        item.playlistIndex
+      )
+    ) {
+
+      currentTrackIndex =
+        item.playlistIndex;
+
+    }
+
+    if (
+      sourceChanged ||
+      Math.abs(
+        audio.currentTime -
+        position.offset
+      ) >
+        LIVE_STATION_DRIFT_TOLERANCE
+    ) {
+
+      await seekLiveAudio(
+        position.offset
+      );
+
+    }
+
+    setMainstreamState(
+      true
+    );
+
+    if (
+      autoplay
+    ) {
+
+      await resumeAudioContext();
+
+      try {
+
+        await audio.play();
+
+      } catch (error) {
+
+        console.error(
+          "AV Junki Radio live playback error:",
+          error
+        );
+
+        setStatus(
+          "Press Listen to join the live station."
+        );
+
+      }
+
+    }
+
+  }
+
+
+  buildLiveStationProgram();
 
 
   let activeChannel =
@@ -2224,7 +2901,9 @@ const channelConfig = {
       !heroImageNext ||
       !src
     ) {
+
       return;
+
     }
 
     const currentLayer =
@@ -2244,7 +2923,9 @@ const channelConfig = {
         ) ===
       src
     ) {
+
       return;
+
     }
 
     nextLayer.src =
@@ -2378,7 +3059,9 @@ const channelConfig = {
     if (
       !config
     ) {
+
       return;
+
     }
 
     const wasPlaying =
@@ -2396,6 +3079,40 @@ const channelConfig = {
 
     currentTrackIndex =
       0;
+
+    if (
+      playPause &&
+      channel !==
+        LIVE_STATION_CHANNEL &&
+      !wasPlaying
+    ) {
+
+      playPause.textContent =
+        "▶";
+
+      playPause.setAttribute(
+        "aria-label",
+        "Play"
+      );
+
+    }
+
+    if (
+      playPause &&
+      channel ===
+        LIVE_STATION_CHANNEL &&
+      !wasPlaying
+    ) {
+
+      playPause.textContent =
+        "LISTEN";
+
+      playPause.setAttribute(
+        "aria-label",
+        "Listen live"
+      );
+
+    }
 
     setHero(
       config.hero
@@ -2431,10 +3148,23 @@ const channelConfig = {
       playlist.length
     ) {
 
-      loadTrack(
-        0,
-        wasPlaying
-      );
+      if (
+        channel ===
+          LIVE_STATION_CHANNEL
+      ) {
+
+        syncToLiveStation(
+          wasPlaying
+        );
+
+      } else {
+
+        loadTrack(
+          0,
+          wasPlaying
+        );
+
+      }
 
     } else {
 
@@ -2458,6 +3188,7 @@ const channelConfig = {
   /* =========================================================
      DEFAULT SCREEN SAVER
   ========================================================= */
+
   function showNowPlaying() {
 
     if (!nowPlaying) {
@@ -2465,9 +3196,11 @@ const channelConfig = {
     }
 
     if (screenSaver) {
+
       screenSaver.classList.add(
         "is-hidden"
       );
+
     }
 
     nowPlaying.classList.add(
@@ -2475,11 +3208,15 @@ const channelConfig = {
     );
 
     if (trackVideo) {
+
       trackVideo.style.display =
         "none";
+
     }
 
   }
+
+
   function showScreenSaver() {
 
     if (
@@ -2491,11 +3228,17 @@ const channelConfig = {
         .remove(
           "is-hidden"
         );
-if (nowPlaying) {
-  nowPlaying.classList.remove(
-    "is-active"
-  );
-}
+
+      if (
+        nowPlaying
+      ) {
+
+        nowPlaying.classList.remove(
+          "is-active"
+        );
+
+      }
+
     }
 
     if (
@@ -2558,13 +3301,17 @@ if (nowPlaying) {
     if (
       !screenContent
     ) {
+
       return null;
+
     }
 
     if (
       trackVideo
     ) {
+
       return trackVideo;
+
     }
 
     trackVideo =
@@ -2616,7 +3363,9 @@ if (nowPlaying) {
         "src"
       )
     ) {
+
       return;
+
     }
 
     const difference =
@@ -2661,15 +3410,21 @@ if (nowPlaying) {
       )
     ) {
 
-   if (
-  nowPlayingArt &&
-  nowPlayingArt.getAttribute("src")
-) {
-  showNowPlaying();
-} else {
-  showScreenSaver();
-}
-       
+      if (
+        nowPlayingArt &&
+        nowPlayingArt.getAttribute(
+          "src"
+        )
+      ) {
+
+        showNowPlaying();
+
+      } else {
+
+        showScreenSaver();
+
+      }
+
       return;
 
     }
@@ -2706,7 +3461,9 @@ if (nowPlaying) {
     if (
       !trackVideo
     ) {
+
       return;
+
     }
 
     trackVideo.pause();
@@ -2757,7 +3514,9 @@ if (nowPlaying) {
     if (
       !playlist.length
     ) {
+
       return;
+
     }
 
     currentTrackIndex =
@@ -2797,7 +3556,7 @@ if (nowPlaying) {
               );
 
               setStatus(
-                "Press play to continue the station."
+                "Press Listen to continue the station."
               );
 
             }
@@ -2810,32 +3569,58 @@ if (nowPlaying) {
   }
 
 
-function playNextTrack() {
+  function playNextTrack() {
 
-  if (playlist.length <= 1) {
-    loadTrack(0, true);
-    return;
+    if (
+      activeChannel ===
+        LIVE_STATION_CHANNEL
+    ) {
+
+      syncToLiveStation(
+        true,
+        500
+      );
+
+      return;
+
+    }
+
+    if (
+      playlist.length <=
+      1
+    ) {
+
+      loadTrack(
+        0,
+        true
+      );
+
+      return;
+
+    }
+
+    let nextTrackIndex;
+
+    do {
+
+      nextTrackIndex =
+        Math.floor(
+          Math.random() *
+          playlist.length
+        );
+
+    } while (
+      nextTrackIndex ===
+      currentTrackIndex
+    );
+
+    loadTrack(
+      nextTrackIndex,
+      true
+    );
+
   }
 
-  let nextTrackIndex;
-
-  do {
-    nextTrackIndex =
-      Math.floor(
-        Math.random() *
-        playlist.length
-      );
-  } while (
-    nextTrackIndex ===
-    currentTrackIndex
-  );
-
-  loadTrack(
-    nextTrackIndex,
-    true
-  );
-
-}
 
   if (
     previousTrack
@@ -2845,6 +3630,23 @@ function playNextTrack() {
       .addEventListener(
         "click",
         () => {
+
+          if (
+            activeChannel ===
+              LIVE_STATION_CHANNEL
+          ) {
+
+            syncToLiveStation(
+              true
+            );
+
+            setStatus(
+              "Live station — synced to now."
+            );
+
+            return;
+
+          }
 
           loadTrack(
             currentTrackIndex -
@@ -2867,7 +3669,234 @@ function playNextTrack() {
         "click",
         () => {
 
+          if (
+            activeChannel ===
+              LIVE_STATION_CHANNEL
+          ) {
+
+            syncToLiveStation(
+              true
+            );
+
+            setStatus(
+              "Live station — synced to now."
+            );
+
+            return;
+
+          }
+
           playNextTrack();
+
+        }
+      );
+
+  }
+
+
+  /* =========================================================
+     PLAYER CONTROLS
+  ========================================================= */
+
+  if (
+    playPause &&
+    audio
+  ) {
+
+    playPause
+      .addEventListener(
+        "click",
+        async () => {
+
+          if (
+            activeChannel ===
+              LIVE_STATION_CHANNEL
+          ) {
+
+            if (
+              !audio.paused
+            ) {
+
+              audio.pause();
+
+              setStatus(
+                "Live audio paused. Press Listen to rejoin now."
+              );
+
+              return;
+
+            }
+
+            await syncToLiveStation(
+              true
+            );
+
+            return;
+
+          }
+
+          if (
+            !hasAudioSource()
+          ) {
+
+            setMainstreamState(
+              false
+            );
+
+            setStatus(
+              "Mainstream is off air — stream source not connected yet."
+            );
+
+            return;
+
+          }
+
+          await resumeAudioContext();
+
+          try {
+
+            if (
+              audio.paused
+            ) {
+
+              await audio.play();
+
+            } else {
+
+              audio.pause();
+
+            }
+
+          } catch (error) {
+
+            console.error(
+              "AV Junki Radio playback error:",
+              error
+            );
+
+            setMainstreamState(
+              false
+            );
+
+            setStatus(
+              "Unable to start the audio stream."
+            );
+
+          }
+
+        }
+      );
+
+
+    audio.addEventListener(
+      "play",
+      () => {
+
+        playPause.textContent =
+          "❚❚";
+
+        playPause.setAttribute(
+          "aria-label",
+          activeChannel ===
+            LIVE_STATION_CHANNEL
+              ? "Pause live radio"
+              : "Pause"
+        );
+
+        setMainstreamState(
+          true
+        );
+
+      }
+    );
+
+
+    audio.addEventListener(
+      "pause",
+      () => {
+
+        if (
+          activeChannel ===
+            LIVE_STATION_CHANNEL
+        ) {
+
+          playPause.textContent =
+            "LISTEN";
+
+          playPause.setAttribute(
+            "aria-label",
+            "Listen live"
+          );
+
+          setMainstreamState(
+            true
+          );
+
+          return;
+
+        }
+
+        playPause.textContent =
+          "▶";
+
+        playPause.setAttribute(
+          "aria-label",
+          "Play"
+        );
+
+        setMainstreamState(
+          false
+        );
+
+      }
+    );
+
+
+    audio.addEventListener(
+      "error",
+      () => {
+
+        setMainstreamState(
+          false
+        );
+
+      }
+    );
+
+  }
+
+
+  if (
+    mainstreamStatus
+  ) {
+
+    mainstreamStatus
+      .addEventListener(
+        "click",
+        () => {
+
+          if (
+            activeChannel ===
+              LIVE_STATION_CHANNEL
+          ) {
+
+            setStatus(
+              "Mainstream is on air."
+            );
+
+            return;
+
+          }
+
+          setStatus(
+            audio &&
+            !audio.paused &&
+            hasAudioSource()
+
+              ? "Mainstream is on air."
+
+              : "Mainstream is off air."
+          );
 
         }
       );
@@ -3041,25 +4070,49 @@ function playNextTrack() {
             : "none";
 
       }
-      if (nowPlayingBackground) {
+
+
+      if (
+        nowPlayingBackground
+      ) {
+
         nowPlayingBackground.src =
-          artwork || "";
+          artwork ||
+          "";
+
       }
 
-      if (nowPlayingArt) {
+
+      if (
+        nowPlayingArt
+      ) {
+
         nowPlayingArt.src =
-          artwork || "";
+          artwork ||
+          "";
+
       }
 
-      if (nowPlayingTitle) {
+
+      if (
+        nowPlayingTitle
+      ) {
+
         nowPlayingTitle.textContent =
           title;
+
       }
 
-      if (nowPlayingArtist) {
+
+      if (
+        nowPlayingArtist
+      ) {
+
         nowPlayingArtist.textContent =
           artist;
+
       }
+
 
       applyPreset(
         preset
@@ -3079,7 +4132,8 @@ function playNextTrack() {
         audio.load();
 
         setMainstreamState(
-          false
+          activeChannel ===
+            LIVE_STATION_CHANNEL
         );
 
       }
@@ -3107,7 +4161,6 @@ function playNextTrack() {
           .display =
           "none";
 
-
         if (
           video
         ) {
@@ -3120,7 +4173,6 @@ function playNextTrack() {
         }
 
       }
-
 
       showScreenSaver();
 
@@ -3174,7 +4226,9 @@ function playNextTrack() {
         if (
           videoSyncing
         ) {
+
           return;
+
         }
 
         videoSyncing =
@@ -3215,12 +4269,13 @@ function playNextTrack() {
       !leftInfoClock ||
       !leftInfoDate
     ) {
+
       return;
+
     }
 
     const now =
       new Date();
-
 
     leftInfoClock.textContent =
       now.toLocaleTimeString(
@@ -3233,7 +4288,6 @@ function playNextTrack() {
             "2-digit"
         }
       );
-
 
     leftInfoDate.textContent =
       now.toLocaleDateString(
@@ -3275,7 +4329,9 @@ function playNextTrack() {
       !sportsScoreB ||
       !sportsStatus
     ) {
+
       return;
+
     }
 
     sportsName.textContent =
@@ -3369,7 +4425,9 @@ function playNextTrack() {
       !dowPercent ||
       !dowStatus
     ) {
+
       return;
+
     }
 
     dowValue.textContent =
@@ -3405,28 +4463,22 @@ function playNextTrack() {
     false
   );
 
-
   setDSPState(
     false
   );
 
-
   resizeSpectrumCanvas();
 
-
   updateLeftInfoTime();
-
 
   window.setInterval(
     updateLeftInfoTime,
     1000
   );
 
-
   showSport(
     0
   );
-
 
   window.setTimeout(
     () => {
@@ -3446,17 +4498,13 @@ function playNextTrack() {
     22000
   );
 
-
   updateDowDisplay();
 
-
   showScreenSaver();
-
 
   setActivePanel(
     activeChannel
   );
-
 
   if (
     screenContent
@@ -3476,17 +4524,52 @@ function playNextTrack() {
 
   }
 
-
   document
     .documentElement
     .dataset
     .radioChannel =
     activeChannel;
 
+  if (
+    playPause
+  ) {
 
-  loadTrack(
-    0,
+    playPause.textContent =
+      "LISTEN";
+
+    playPause.setAttribute(
+      "aria-label",
+      "Listen live"
+    );
+
+  }
+
+  syncToLiveStation(
     false
+  );
+
+  setMainstreamState(
+    true
+  );
+
+  window.setInterval(
+    () => {
+
+      if (
+        activeChannel ===
+          LIVE_STATION_CHANNEL &&
+        audio &&
+        !audio.paused
+      ) {
+
+        syncToLiveStation(
+          true
+        );
+
+      }
+
+    },
+    30000
   );
 
 });
