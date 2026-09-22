@@ -5098,9 +5098,40 @@ document.addEventListener("DOMContentLoaded", () => {
         !audio.paused
       ) {
 
-        syncToLiveStation(
-          true
-        );
+        const position =
+          getLiveStationPosition();
+
+        const currentSource =
+          audio.getAttribute(
+            "src"
+          ) ||
+          "";
+
+        const expectedSource =
+          position &&
+          position.item &&
+          position.item.track
+            ? position.item.track.src
+            : "";
+
+        /*
+          SAFETY GUARD:
+          Only correct timing while the SAME
+          audio file is still supposed to be playing.
+
+          Never replace a song mid-play just because
+          the live station clock has moved ahead.
+        */
+        if (
+          currentSource ===
+          expectedSource
+        ) {
+
+          syncToLiveStation(
+            true
+          );
+
+        }
 
       }
 
