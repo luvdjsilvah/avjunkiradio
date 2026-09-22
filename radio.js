@@ -2176,7 +2176,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let liveStationDuration =
     0;
-
+  let currentLiveProgramIndex =
+    -1;
 
   function hashStationSeed(
     value
@@ -2798,7 +2799,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const item =
       position.item;
+     
+    const liveProgramIndex =
+      liveStationProgram.indexOf(
+        item
+      );
 
+    if (
+      liveProgramIndex >= 0
+    ) {
+
+      currentLiveProgramIndex =
+        liveProgramIndex;
+
+    }
     const currentSource =
       audio.getAttribute(
         "src"
@@ -4080,18 +4094,87 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function playNextTrack() {
 
-    if (
-      activeChannel ===
-        LIVE_STATION_CHANNEL
-    ) {
+  if (
+  activeChannel ===
+    LIVE_STATION_CHANNEL
+) {
 
-   syncToLiveStation(
-        true
-      );
+  if (
+    !liveStationProgram.length
+  ) {
 
-      return;
+    return;
 
-    }
+  }
+
+  if (
+    currentLiveProgramIndex < 0
+  ) {
+
+    syncToLiveStation(
+      true
+    );
+
+    return;
+
+  }
+
+  currentLiveProgramIndex =
+    (
+      currentLiveProgramIndex +
+      1
+    ) %
+    liveStationProgram.length;
+
+  const nextLiveItem =
+    liveStationProgram[
+      currentLiveProgramIndex
+    ];
+
+  if (
+    nextLiveItem.type ===
+      "music" &&
+    Number.isInteger(
+      nextLiveItem.playlistIndex
+    )
+  ) {
+
+    currentTrackIndex =
+      nextLiveItem.playlistIndex;
+
+  }
+
+  window.setRadioTrack(
+    nextLiveItem.track
+  );
+
+  resumeAudioContext()
+    .then(
+      async () => {
+
+        try {
+
+          await audio.play();
+
+        } catch (error) {
+
+          console.error(
+            "AV Junki Radio live advance error:",
+            error
+          );
+
+          setStatus(
+            "Press Listen to continue the station."
+          );
+
+        }
+
+      }
+    );
+
+  return;
+
+}
 
     if (
       playlist.length <=
@@ -5087,55 +5170,6 @@ document.addEventListener("DOMContentLoaded", () => {
     true
   );
 
-  window.setInterval(
-    () => {
 
-      if (
-        activeChannel ===
-          LIVE_STATION_CHANNEL &&
-        audio &&
-        !audio.paused
-      ) {
-
-        const position =
-          getLiveStationPosition();
-
-        const currentSource =
-          audio.getAttribute(
-            "src"
-          ) ||
-          "";
-
-        const expectedSource =
-          position &&
-          position.item &&
-          position.item.track
-            ? position.item.track.src
-            : "";
-
-        /*
-          SAFETY GUARD:
-          Only correct timing while the SAME
-          audio file is still supposed to be playing.
-
-          Never replace a song mid-play just because
-          the live station clock has moved ahead.
-        */
-        if (
-          currentSource ===
-          expectedSource
-        ) {
-
-          syncToLiveStation(
-            true
-          );
-
-        }
-
-      }
-
-    },
-    30000
-  );
 
 });
