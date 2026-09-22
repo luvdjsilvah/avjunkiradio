@@ -4085,9 +4085,8 @@ document.addEventListener("DOMContentLoaded", () => {
         LIVE_STATION_CHANNEL
     ) {
 
-      syncToLiveStation(
-        true,
-        500
+   syncToLiveStation(
+        true
       );
 
       return;
