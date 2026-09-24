@@ -2154,7 +2154,120 @@ let stationIds = [
 
   };
 
+async function loadStationIdsFromApi() {
 
+  try {
+
+    const response =
+      await fetch(
+        `${STATION_ADMIN_API_BASE}/api/drops`,
+        {
+          cache: "no-store"
+        }
+      );
+
+    const result =
+      await response.json();
+
+    if (
+      !response.ok ||
+      !result.ok ||
+      !Array.isArray(result.drops)
+    ) {
+
+      throw new Error(
+        "Could not load station IDs."
+      );
+
+    }
+
+    const apiStationIds =
+      result.drops
+        .filter(
+          (drop) =>
+            Number(drop.enabled) === 1
+        )
+        .map(
+          (drop) => {
+
+            const src =
+              drop.r2_key
+                ? `${STATION_ADMIN_API_BASE}/api/audio/${encodeURIComponent(drop.slot_key)}`
+                : drop.source_path;
+
+            const duration =
+              Number(
+                drop.duration_seconds
+              );
+
+            if (
+              src &&
+              Number.isFinite(duration) &&
+              duration > 0
+            ) {
+
+              liveDurationSeconds[
+                src
+              ] =
+                duration;
+
+            }
+
+            return {
+
+              title:
+                drop.title ||
+                drop.original_filename ||
+                "AV Junki Radio",
+
+              artist:
+                drop.artist ||
+                "AV Junki Radio",
+
+              artwork: "",
+
+              src,
+
+              video: "",
+
+              preset: "music",
+
+              isStationId: true
+
+            };
+
+          }
+        )
+        .filter(
+          (track) =>
+            Boolean(track.src)
+        );
+
+    if (
+      apiStationIds.length === 0
+    ) {
+
+      return false;
+
+    }
+
+    stationIds =
+      apiStationIds;
+
+    return true;
+
+  } catch (error) {
+
+    console.warn(
+      "AV Junki Radio using fallback station IDs:",
+      error
+    );
+
+    return false;
+
+  }
+
+}
   const LIVE_STATION_CHANNEL =
     "lobby";
 
