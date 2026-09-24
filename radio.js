@@ -3007,7 +3007,15 @@ async function loadStationIdsFromApi() {
   }
 
 
+ async function initializeLiveStation() {
+
+  await loadStationIdsFromApi();
+
   buildLiveStationProgram();
+
+}
+
+initializeLiveStation();
 
 
   let activeChannel =
