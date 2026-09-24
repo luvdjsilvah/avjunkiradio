@@ -43,15 +43,23 @@
     }
 
     .status {
-      background: #1d2a20;
-      border: 1px solid #355b3c;
+      background: #211711;
+      border: 1px solid #4a3529;
       border-radius: 10px;
       padding: 14px 16px;
       margin-bottom: 24px;
     }
 
-    .status strong {
+    .status.good {
+      background: #1d2a20;
+      border-color: #355b3c;
       color: #b8e0bd;
+    }
+
+    .status.bad {
+      background: #321b1b;
+      border-color: #743c3c;
+      color: #f1b8b8;
     }
 
     .section-title {
@@ -78,17 +86,27 @@
     }
 
     .drop-card p {
-      margin: 0 0 14px;
+      margin: 0 0 8px;
       color: #bfae9f;
       font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .slot-label {
+      color: #d5bda9;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
     }
 
     audio {
       width: 100%;
-      margin-bottom: 14px;
+      margin: 10px 0 14px;
     }
 
-    .replace-button {
+    .button {
       display: inline-block;
       width: 100%;
       border: 1px solid #80614d;
@@ -99,14 +117,47 @@
       text-align: center;
       cursor: pointer;
       font-weight: 700;
+      font-size: 14px;
     }
 
-    .replace-button:hover {
+    .button:hover {
       background: #422c20;
+    }
+
+    .button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .upload-button {
+      margin-top: 10px;
+      background: #4b2e20;
     }
 
     input[type="file"] {
       display: none;
+    }
+
+    .selected-file {
+      min-height: 18px;
+      margin-top: 9px;
+      color: #cdb9aa;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .message {
+      min-height: 18px;
+      margin-top: 10px;
+      font-size: 12px;
+    }
+
+    .message.good {
+      color: #9fd0a7;
+    }
+
+    .message.bad {
+      color: #efa7a7;
     }
 
     footer {
@@ -127,16 +178,13 @@
 
   <main>
 
-    <div class="status">
-      <strong>Admin dashboard shell online.</strong>
-      Uploading and publishing will be connected to the AV Junki Radio Admin API next.
+    <div class="status" id="apiStatus">
+      Connecting to AV Junki Radio Admin API...
     </div>
 
     <h2 class="section-title">Station Drops</h2>
 
-    <div class="drop-grid" id="dropGrid">
-      <!-- Drop slots will be loaded here by the admin system. -->
-    </div>
+    <div class="drop-grid" id="dropGrid"></div>
 
     <footer>
       AV Junki Radio • Internal Administration
@@ -147,58 +195,468 @@
   <script>
     "use strict";
 
-    /*
-      AV JUNKI RADIO ADMIN
-      Phase 1 dashboard shell.
+    const API_BASE =
+      "https://av-junki-radio-admin-api.luvdjsilvah.workers.dev";
 
-      Next:
-      - Load station drop slots from the Admin API
-      - Preview current audio
-      - Upload replacement audio
-      - Capture duration automatically
-      - Save metadata to D1
-      - Store audio in R2
-      - Add channel / genre targeting
-      - Add authentication
-    */
+    const apiStatus =
+      document.getElementById("apiStatus");
 
-    const dropGrid = document.getElementById("dropGrid");
+    const dropGrid =
+      document.getElementById("dropGrid");
 
-    const placeholderDrops = [
-      "Drop 01",
-      "Drop 02",
-      "Drop 03",
-      "Drop 04",
-      "Drop 05",
-      "Drop 06",
-      "Drop 07",
-      "Drop 08"
-    ];
 
-    placeholderDrops.forEach((name, index) => {
-      const slot = String(index + 1).padStart(2, "0");
+    function escapeHtml(value) {
 
-      const card = document.createElement("div");
-      card.className = "drop-card";
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    }
+
+
+    function formatDuration(seconds) {
+
+      const total =
+        Math.max(
+          0,
+          Number(seconds) || 0
+        );
+
+      const minutes =
+        Math.floor(total / 60);
+
+      const remaining =
+        Math.floor(total % 60);
+
+      return `${minutes}:${String(remaining).padStart(2, "0")}`;
+
+    }
+
+
+    function getCurrentAudioUrl(drop) {
+
+      if (drop.audio_url) {
+        return drop.audio_url;
+      }
+
+      if (drop.url) {
+        return drop.url;
+      }
+
+      if (drop.r2_url) {
+        return drop.r2_url;
+      }
+
+      if (drop.source_path) {
+        return `../${drop.source_path}`;
+      }
+
+      return "";
+
+    }
+
+
+    async function checkApi() {
+
+      try {
+
+        const response =
+          await fetch(
+            `${API_BASE}/api/health`,
+            {
+              cache: "no-store"
+            }
+          );
+
+        const result =
+          await response.json();
+
+        if (
+          !response.ok ||
+          !result.ok
+        ) {
+          throw new Error(
+            result.error ||
+            "Admin API health check failed."
+          );
+        }
+
+        apiStatus.className =
+          "status good";
+
+        apiStatus.textContent =
+          `Admin API connected — Database connected — Audio bucket ${
+            result.audioBucket || "connected"
+          } — ${result.dropCount ?? 0} station drops`;
+
+        return true;
+
+      } catch (error) {
+
+        apiStatus.className =
+          "status bad";
+
+        apiStatus.textContent =
+          `Admin API connection failed: ${
+            error instanceof Error
+              ? error.message
+              : String(error)
+          }`;
+
+        return false;
+
+      }
+
+    }
+
+
+    function createDropCard(drop) {
+
+      const slot =
+        drop.slot_key;
+
+      const card =
+        document.createElement("div");
+
+      card.className =
+        "drop-card";
+
+      const audioUrl =
+        getCurrentAudioUrl(drop);
 
       card.innerHTML = `
-        <h2>${name}</h2>
-        <p>Slot ${slot} • Waiting for Admin API connection</p>
+        <div class="slot-label">
+          ${escapeHtml(slot)}
+        </div>
 
-        <label class="replace-button" for="drop-${slot}">
+        <h2>
+          ${escapeHtml(drop.title)}
+        </h2>
+
+        <p>
+          ${escapeHtml(drop.artist)}
+        </p>
+
+        <p>
+          Current file:
+          ${escapeHtml(drop.original_filename)}
+        </p>
+
+        <p>
+          Duration:
+          ${formatDuration(drop.duration_seconds)}
+          • Version:
+          ${escapeHtml(drop.version)}
+        </p>
+
+        ${
+          audioUrl
+            ? `
+              <audio
+                controls
+                preload="none"
+                src="${escapeHtml(audioUrl)}"
+              ></audio>
+            `
+            : `
+              <p>
+                No preview URL available.
+              </p>
+            `
+        }
+
+        <label
+          class="button"
+          for="file-${escapeHtml(slot)}"
+        >
           Choose Replacement
         </label>
 
         <input
-          id="drop-${slot}"
+          id="file-${escapeHtml(slot)}"
           type="file"
-          accept="audio/mpeg,audio/wav,audio/mp4,audio/x-m4a"
+          accept=".mp3,.wav,.m4a,audio/mpeg,audio/wav,audio/mp4,audio/x-m4a"
+        >
+
+        <div
+          class="selected-file"
+          id="selected-${escapeHtml(slot)}"
+        >
+          No replacement selected.
+        </div>
+
+        <button
+          class="button upload-button"
+          id="upload-${escapeHtml(slot)}"
+          type="button"
           disabled
         >
+          Upload Replacement
+        </button>
+
+        <div
+          class="message"
+          id="message-${escapeHtml(slot)}"
+        ></div>
       `;
 
-      dropGrid.appendChild(card);
-    });
+
+      const fileInput =
+        card.querySelector(
+          `#file-${CSS.escape(slot)}`
+        );
+
+      const selected =
+        card.querySelector(
+          `#selected-${CSS.escape(slot)}`
+        );
+
+      const uploadButton =
+        card.querySelector(
+          `#upload-${CSS.escape(slot)}`
+        );
+
+      const message =
+        card.querySelector(
+          `#message-${CSS.escape(slot)}`
+        );
+
+
+      fileInput.addEventListener(
+        "change",
+        () => {
+
+          const file =
+            fileInput.files?.[0];
+
+          if (!file) {
+
+            selected.textContent =
+              "No replacement selected.";
+
+            uploadButton.disabled =
+              true;
+
+            return;
+
+          }
+
+          selected.textContent =
+            file.name;
+
+          uploadButton.disabled =
+            false;
+
+          message.textContent =
+            "";
+
+          message.className =
+            "message";
+
+        }
+      );
+
+
+      uploadButton.addEventListener(
+        "click",
+        async () => {
+
+          const file =
+            fileInput.files?.[0];
+
+          if (!file) {
+            return;
+          }
+
+
+          uploadButton.disabled =
+            true;
+
+          uploadButton.textContent =
+            "Uploading...";
+
+          message.className =
+            "message";
+
+          message.textContent =
+            "Sending replacement to AV Junki Radio Admin API...";
+
+
+          try {
+
+            const formData =
+              new FormData();
+
+            formData.append(
+              "file",
+              file,
+              file.name
+            );
+
+
+            const response =
+              await fetch(
+                `${API_BASE}/api/drops/${encodeURIComponent(slot)}/upload`,
+                {
+                  method: "POST",
+                  body: formData
+                }
+              );
+
+
+            const result =
+              await response.json();
+
+
+            if (
+              !response.ok ||
+              !result.ok
+            ) {
+
+              throw new Error(
+                result.error ||
+                "Upload failed."
+              );
+
+            }
+
+
+            message.className =
+              "message good";
+
+            message.textContent =
+              "Replacement uploaded successfully.";
+
+            fileInput.value =
+              "";
+
+            selected.textContent =
+              "No replacement selected.";
+
+
+            await loadDrops();
+
+
+          } catch (error) {
+
+            message.className =
+              "message bad";
+
+            message.textContent =
+              error instanceof Error
+                ? error.message
+                : String(error);
+
+          } finally {
+
+            uploadButton.textContent =
+              "Upload Replacement";
+
+            uploadButton.disabled =
+              !fileInput.files?.length;
+
+          }
+
+        }
+      );
+
+
+      return card;
+
+    }
+
+
+    async function loadDrops() {
+
+      try {
+
+        const response =
+          await fetch(
+            `${API_BASE}/api/drops`,
+            {
+              cache: "no-store"
+            }
+          );
+
+        const result =
+          await response.json();
+
+
+        if (
+          !response.ok ||
+          !result.ok
+        ) {
+
+          throw new Error(
+            result.error ||
+            "Could not load station drops."
+          );
+
+        }
+
+
+        dropGrid.innerHTML =
+          "";
+
+
+        if (
+          !Array.isArray(result.drops) ||
+          result.drops.length === 0
+        ) {
+
+          dropGrid.innerHTML =
+            "<p>No station drops were returned by the Admin API.</p>";
+
+          return;
+
+        }
+
+
+        result.drops.forEach(
+          (drop) => {
+
+            dropGrid.appendChild(
+              createDropCard(drop)
+            );
+
+          }
+        );
+
+
+      } catch (error) {
+
+        dropGrid.innerHTML =
+          `<p>Unable to load station drops: ${
+            escapeHtml(
+              error instanceof Error
+                ? error.message
+                : String(error)
+            )
+          }</p>`;
+
+      }
+
+    }
+
+
+    async function startAdmin() {
+
+      const connected =
+        await checkApi();
+
+      if (!connected) {
+        return;
+      }
+
+      await loadDrops();
+
+    }
+
+
+    startAdmin();
   </script>
 
 </body>
