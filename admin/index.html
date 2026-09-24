@@ -234,7 +234,71 @@
       return `${minutes}:${String(remaining).padStart(2, "0")}`;
 
     }
+function getAudioDuration(file) {
 
+  return new Promise(
+    (resolve, reject) => {
+
+      const audio =
+        document.createElement("audio");
+
+      const objectUrl =
+        URL.createObjectURL(file);
+
+      audio.preload =
+        "metadata";
+
+      audio.onloadedmetadata =
+        () => {
+
+          const duration =
+            audio.duration;
+
+          URL.revokeObjectURL(
+            objectUrl
+          );
+
+          if (
+            Number.isFinite(duration) &&
+            duration > 0
+          ) {
+
+            resolve(duration);
+
+          } else {
+
+            reject(
+              new Error(
+                "Could not read the audio duration."
+              )
+            );
+
+          }
+
+        };
+
+      audio.onerror =
+        () => {
+
+          URL.revokeObjectURL(
+            objectUrl
+          );
+
+          reject(
+            new Error(
+              "Could not read the selected audio file."
+            )
+          );
+
+        };
+
+      audio.src =
+        objectUrl;
+
+    }
+  );
+
+}
 
     function getCurrentAudioUrl(drop) {
 
@@ -495,7 +559,10 @@
               file,
               file.name
             );
-
+formData.append(
+  "duration",
+  String(await getAudioDuration(file))
+);
 
             const response =
               await fetch(
