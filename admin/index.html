@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>AV Junki Radio | Admin</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #15100d;
+      color: #f4eee8;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    header {
+      background: #211711;
+      border-bottom: 1px solid #5a4030;
+      padding: 22px 28px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: 0.5px;
+    }
+
+    header p {
+      margin: 7px 0 0;
+      color: #bfae9f;
+      font-size: 14px;
+    }
+
+    main {
+      width: min(1100px, calc(100% - 32px));
+      margin: 32px auto;
+    }
+
+    .status {
+      background: #1d2a20;
+      border: 1px solid #355b3c;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 24px;
+    }
+
+    .status strong {
+      color: #b8e0bd;
+    }
+
+    .section-title {
+      margin: 0 0 16px;
+      font-size: 20px;
+    }
+
+    .drop-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .drop-card {
+      background: #211711;
+      border: 1px solid #4a3529;
+      border-radius: 12px;
+      padding: 18px;
+    }
+
+    .drop-card h2 {
+      margin: 0 0 6px;
+      font-size: 17px;
+    }
+
+    .drop-card p {
+      margin: 0 0 14px;
+      color: #bfae9f;
+      font-size: 13px;
+    }
+
+    audio {
+      width: 100%;
+      margin-bottom: 14px;
+    }
+
+    .replace-button {
+      display: inline-block;
+      width: 100%;
+      border: 1px solid #80614d;
+      border-radius: 8px;
+      padding: 11px 14px;
+      background: #332219;
+      color: #f4eee8;
+      text-align: center;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .replace-button:hover {
+      background: #422c20;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    footer {
+      margin-top: 30px;
+      color: #8f8177;
+      font-size: 12px;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>AV Junki Radio Admin</h1>
+    <p>Station Drop Manager</p>
+  </header>
+
+  <main>
+
+    <div class="status">
+      <strong>Admin dashboard shell online.</strong>
+      Uploading and publishing will be connected to the AV Junki Radio Admin API next.
+    </div>
+
+    <h2 class="section-title">Station Drops</h2>
+
+    <div class="drop-grid" id="dropGrid">
+      <!-- Drop slots will be loaded here by the admin system. -->
+    </div>
+
+    <footer>
+      AV Junki Radio • Internal Administration
+    </footer>
+
+  </main>
+
+  <script>
+    "use strict";
+
+    /*
+      AV JUNKI RADIO ADMIN
+      Phase 1 dashboard shell.
+
+      Next:
+      - Load station drop slots from the Admin API
+      - Preview current audio
+      - Upload replacement audio
+      - Capture duration automatically
+      - Save metadata to D1
+      - Store audio in R2
+      - Add channel / genre targeting
+      - Add authentication
+    */
+
+    const dropGrid = document.getElementById("dropGrid");
+
+    const placeholderDrops = [
+      "Drop 01",
+      "Drop 02",
+      "Drop 03",
+      "Drop 04",
+      "Drop 05",
+      "Drop 06",
+      "Drop 07",
+      "Drop 08"
+    ];
+
+    placeholderDrops.forEach((name, index) => {
+      const slot = String(index + 1).padStart(2, "0");
+
+      const card = document.createElement("div");
+      card.className = "drop-card";
+
+      card.innerHTML = `
+        <h2>${name}</h2>
+        <p>Slot ${slot} • Waiting for Admin API connection</p>
+
+        <label class="replace-button" for="drop-${slot}">
+          Choose Replacement
+        </label>
+
+        <input
+          id="drop-${slot}"
+          type="file"
+          accept="audio/mpeg,audio/wav,audio/mp4,audio/x-m4a"
+          disabled
+        >
+      `;
+
+      dropGrid.appendChild(card);
+    });
+  </script>
+
+</body>
+</html>
