@@ -313,7 +313,9 @@ function getAudioDuration(file) {
       if (drop.r2_url) {
         return drop.r2_url;
       }
-
+if (drop.r2_key) {
+  return `${API_BASE}/api/audio/${encodeURIComponent(drop.slot_key)}`;
+}
       if (drop.source_path) {
         return `../${drop.source_path}`;
       }
