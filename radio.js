@@ -1976,8 +1976,9 @@ document.addEventListener("DOMContentLoaded", () => {
   /* =========================================================
      LIVE STATION / STATION IDS
   ========================================================= */
-
-  const stationIds = [
+const STATION_ADMIN_API_BASE =
+  "https://av-junki-radio-admin-api.luvdjsilvah.workers.dev";
+let stationIds = [
 
     {
       title: "You're Listening to AV Junki Radio",
