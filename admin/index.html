@@ -188,6 +188,41 @@
       font-size: 12px;
       text-align: center;
     }
+    .admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.admin-tab {
+  border: 1px solid #80614d;
+  border-radius: 8px;
+  padding: 11px 18px;
+  background: #2a1d16;
+  color: #d9c8ba;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.admin-tab:hover {
+  background: #3a281e;
+}
+
+.admin-tab.active {
+  background: #5a3928;
+  color: #ffffff;
+  border-color: #a8785a;
+}
+
+.admin-section {
+  display: none;
+}
+
+.admin-section.active {
+  display: block;
+}
   </style>
 </head>
 
@@ -794,6 +829,31 @@ formData.append(
 
     startAdmin();
   </script>
+<script>
+  document.querySelectorAll(".admin-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
 
+      document.querySelectorAll(".admin-tab").forEach((button) => {
+        button.classList.remove("active");
+      });
+
+      document.querySelectorAll(".admin-section").forEach((section) => {
+        section.classList.remove("active");
+      });
+
+      tab.classList.add("active");
+
+      const targetSection =
+        document.getElementById(
+          `section-${tab.dataset.section}`
+        );
+
+      if (targetSection) {
+        targetSection.classList.add("active");
+      }
+
+    });
+  });
+</script>
 </body>
 </html>
