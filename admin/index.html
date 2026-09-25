@@ -1169,7 +1169,98 @@ musicUploadButton.addEventListener(
     }
 
   }
+  async function loadMusicLibrary() {
+
+  musicItems.innerHTML =
+    "<p>Loading music library...</p>";
+
+  try {
+
+    const response =
+      await fetch(
+        `${API_BASE}/api/music`,
+        {
+          cache: "no-store"
+        }
+      );
+
+    const result =
+      await response.json();
+
+    if (
+      !response.ok ||
+      !result.ok
+    ) {
+
+      throw new Error(
+        result.error ||
+        "Could not load music library."
+      );
+
+    }
+
+    const music =
+      Array.isArray(result.music)
+        ? result.music
+        : [];
+
+    if (music.length === 0) {
+
+      musicItems.innerHTML =
+        "<p>No music has been uploaded yet.</p>";
+
+      return;
+    }
+
+    musicItems.innerHTML =
+      music
+        .map(
+          (item) => `
+            <div
+              class="drop-card music-item"
+              data-genre="${escapeHtml(item.genre || "unassigned")}"
+            >
+              <div class="slot-label">
+                ${escapeHtml(item.genre || "Unassigned")}
+              </div>
+
+              <h2>
+                ${escapeHtml(item.original_filename)}
+              </h2>
+
+              <p>
+                Duration:
+                ${formatDuration(item.duration_seconds)}
+              </p>
+
+              <p>
+                Status:
+                ${Number(item.enabled) === 1 ? "Enabled" : "Disabled"}
+              </p>
+            </div>
+          `
+        )
+        .join("");
+
+  } catch (error) {
+
+    musicItems.innerHTML =
+      `<p>Unable to load music library: ${
+        escapeHtml(
+          error instanceof Error
+            ? error.message
+            : String(error)
+        )
+      }</p>`;
+
+  }
+
+}
 );
+loadMusicLibrary(
+  
+);
+
 </script>
 </body>
 </html>
