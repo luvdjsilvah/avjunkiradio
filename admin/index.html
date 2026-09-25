@@ -991,6 +991,182 @@ formData.append(
     });
   });
 });
+  const musicUploadFile =
+  document.getElementById("musicUploadFile");
+
+const musicSelectedFile =
+  document.getElementById("musicSelectedFile");
+
+const musicGenre =
+  document.getElementById("musicGenre");
+
+const musicUploadButton =
+  document.getElementById("musicUploadButton");
+
+const musicUploadMessage =
+  document.getElementById("musicUploadMessage");
+
+
+function updateMusicUploadButton() {
+
+  musicUploadButton.disabled =
+    !musicUploadFile.files?.length ||
+    !musicGenre.value;
+
+}
+
+
+musicUploadFile.addEventListener(
+  "change",
+  () => {
+
+    const file =
+      musicUploadFile.files?.[0];
+
+    musicSelectedFile.textContent =
+      file
+        ? file.name
+        : "No audio file selected.";
+
+    musicUploadMessage.textContent =
+      "";
+
+    musicUploadMessage.className =
+      "message";
+
+    updateMusicUploadButton();
+
+  }
+);
+
+
+musicGenre.addEventListener(
+  "change",
+  () => {
+
+    updateMusicUploadButton();
+
+  }
+);
+
+
+musicUploadButton.addEventListener(
+  "click",
+  async () => {
+
+    const file =
+      musicUploadFile.files?.[0];
+
+    const genre =
+      musicGenre.value;
+
+    if (!file || !genre) {
+      return;
+    }
+
+
+    musicUploadButton.disabled =
+      true;
+
+    musicUploadButton.textContent =
+      "Uploading...";
+
+    musicUploadMessage.className =
+      "message";
+
+    musicUploadMessage.textContent =
+      "Sending audio to AV Junki Radio Admin API...";
+
+
+    try {
+
+      const formData =
+        new FormData();
+
+      formData.append(
+        "file",
+        file,
+        file.name
+      );
+
+      formData.append(
+        "genre",
+        genre
+      );
+
+      formData.append(
+        "duration",
+        String(
+          await getAudioDuration(file)
+        )
+      );
+
+
+      const response =
+        await fetch(
+          `${API_BASE}/api/music/upload`,
+          {
+            method: "POST",
+            body: formData
+          }
+        );
+
+
+      const result =
+        await response.json();
+
+
+      if (
+        !response.ok ||
+        !result.ok
+      ) {
+
+        throw new Error(
+          result.error ||
+          "Audio upload failed."
+        );
+
+      }
+
+
+      musicUploadMessage.className =
+        "message good";
+
+      musicUploadMessage.textContent =
+        "Audio uploaded successfully.";
+
+      musicUploadFile.value =
+        "";
+
+      musicGenre.value =
+        "";
+
+      musicSelectedFile.textContent =
+        "No audio file selected.";
+
+
+    } catch (error) {
+
+      musicUploadMessage.className =
+        "message bad";
+
+      musicUploadMessage.textContent =
+        error instanceof Error
+          ? error.message
+          : String(error);
+
+
+    } finally {
+
+      musicUploadButton.textContent =
+        "Upload Audio";
+
+      updateMusicUploadButton();
+
+    }
+
+  }
+);
 </script>
 </body>
 </html>
