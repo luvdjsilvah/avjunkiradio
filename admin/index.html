@@ -341,9 +341,57 @@
     </button>
   </div>
 
-  <div id="musicLibrary">
-    <p>Music and podcast upload tools will go here.</p>
+<div id="musicLibrary">
+
+  <div class="music-upload-panel">
+    <h3>Upload Audio</h3>
+
+    <label class="button" for="musicUploadFile">
+      Choose Audio File
+    </label>
+
+    <input
+      id="musicUploadFile"
+      type="file"
+      accept=".mp3,.wav,.m4a,audio/mpeg,audio/wav,audio/mp4,audio/x-m4a"
+    >
+
+    <div class="selected-file" id="musicSelectedFile">
+      No audio file selected.
+    </div>
+
+    <label for="musicGenre">
+      Genre
+    </label>
+
+    <select id="musicGenre">
+      <option value="">Select genre</option>
+      <option value="jazz">Jazz</option>
+      <option value="hip-hop">Hip Hop</option>
+      <option value="rnb">R&amp;B</option>
+      <option value="house">House</option>
+      <option value="reggae">Reggae</option>
+      <option value="gospel">Gospel</option>
+      <option value="podcast">Podcast</option>
+      <option value="unassigned">Unassigned</option>
+    </select>
+
+    <button
+      class="button upload-button"
+      id="musicUploadButton"
+      type="button"
+      disabled
+    >
+      Upload Audio
+    </button>
+
+    <div
+      class="message"
+      id="musicUploadMessage"
+    ></div>
   </div>
+
+</div>
 </section>
 
 <section class="admin-section" id="section-images">
