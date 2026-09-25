@@ -922,6 +922,27 @@ formData.append(
 
     });
   });
+  document.querySelectorAll(".music-genre-tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".music-genre-tab").forEach((button) => {
+      button.classList.remove("active");
+    });
+
+    tab.classList.add("active");
+
+    const selectedGenre = tab.dataset.genre;
+
+    document.querySelectorAll(".music-item").forEach((item) => {
+      const itemGenre = item.dataset.genre;
+
+      if (selectedGenre === "all" || itemGenre === selectedGenre) {
+        item.style.display = "";
+      } else {
+        item.style.display = "none";
+      }
+    });
+  });
+});
 </script>
 </body>
 </html>
