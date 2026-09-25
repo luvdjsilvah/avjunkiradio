@@ -36,7 +36,29 @@
       color: #bfae9f;
       font-size: 14px;
     }
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
 
+.logout-button {
+  display: inline-block;
+  border: 1px solid #80614d;
+  border-radius: 8px;
+  padding: 10px 16px;
+  background: #332219;
+  color: #f4eee8;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.logout-button:hover {
+  background: #422c20;
+}
     main {
       width: min(1100px, calc(100% - 32px));
       margin: 32px auto;
@@ -171,10 +193,21 @@
 
 <body>
 
-  <header>
-    <h1>AV Junki Radio Admin</h1>
-    <p>Station Drop Manager</p>
-  </header>
+<header>
+  <div class="header-row">
+    <div>
+      <h1>AV Junki Radio Admin</h1>
+      <p>Station Drop Manager</p>
+    </div>
+
+    <a
+      class="logout-button"
+      href="/cdn-cgi/access/logout"
+    >
+      Logout
+    </a>
+  </div>
+</header>
 
   <main>
 
