@@ -4643,33 +4643,61 @@ window.setInterval(() => {
 
   }
 
-  window.setRadioTrack(
+   window.setRadioTrack(
     nextLiveItem.track
   );
 
-  resumeAudioContext()
-    .then(
-      async () => {
+  const startNextLiveTrack =
+    async () => {
 
-        try {
+      try {
 
-          await audio.play();
+        // Make absolutely sure the new track begins at its true start.
+        if (
+          Number.isFinite(audio.duration) &&
+          audio.currentTime !== 0
+        ) {
 
-        } catch (error) {
-
-          console.error(
-            "AV Junki Radio live advance error:",
-            error
-          );
-
-          setStatus(
-            "Press Listen to continue the station."
-          );
+          audio.currentTime = 0;
 
         }
 
+        await resumeAudioContext();
+
+        await audio.play();
+
+      } catch (error) {
+
+        console.error(
+          "AV Junki Radio live advance error:",
+          error
+        );
+
+        setStatus(
+          "Press Listen to continue the station."
+        );
+
+      }
+
+    };
+
+  if (
+    audio.readyState >= 3
+  ) {
+
+    startNextLiveTrack();
+
+  } else {
+
+    audio.addEventListener(
+      "canplay",
+      startNextLiveTrack,
+      {
+        once: true
       }
     );
+
+  }
 
   return;
 
