@@ -16,6 +16,9 @@ document.addEventListener("DOMContentLoaded", () => {
       "radio-audio"
     );
 
+  // Web Audio requires a CORS-enabled media element for Worker-hosted tracks.
+  if (audio) audio.crossOrigin = "anonymous";
+
   const playPause =
     document.getElementById(
       "play-pause"
@@ -126,12 +129,22 @@ document.addEventListener("DOMContentLoaded", () => {
   let videoSyncing =
     false;
 
+  let featureVideo = null;
+  let featureVideoSource = null;
+  let featureVideoButton = null;
+  let videoPlaybackActive = false;
+  let resumeRadioAfterVideo = false;
+  let presetBeforeVideo = "music";
+  let availableVideos = [];
+
   let dropVisual = null;
 
   let dropWaveCanvas = null;
 
   let currentTrackIsStationId =
     false;
+
+  let currentDropArtwork = "";
 
   const DROP_SCREEN_SRC =
     "assets/avjunki-radio-drop-screen.webp";
@@ -238,6 +251,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let audioContext = null;
   let sourceNode = null;
+  let radioSourceGain = null;
+  let videoSourceGain = null;
   let inputGain = null;
   let lowShelf = null;
   let presenceEQ = null;
@@ -274,6 +289,16 @@ document.addEventListener("DOMContentLoaded", () => {
       ratio: 3,
       attack: 0.018,
       release: 0.18
+    },
+
+    drop: {
+      input: 0.95, lowGain: 0.5, presenceGain: 0.5,
+      threshold: -16, knee: 8, ratio: 2.5, attack: 0.012, release: 0.18
+    },
+
+    video: {
+      input: 0.9, lowGain: 0, presenceGain: 0,
+      threshold: -12, knee: 8, ratio: 2, attack: 0.018, release: 0.22
     },
 
     podcast: {
@@ -641,6 +666,11 @@ document.addEventListener("DOMContentLoaded", () => {
             audio
           );
 
+      radioSourceGain = audioContext.createGain();
+      radioSourceGain.gain.value = 1;
+      videoSourceGain = audioContext.createGain();
+      videoSourceGain.gain.value = 0;
+
       inputGain =
         audioContext
           .createGain();
@@ -715,8 +745,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
       sourceNode
         .connect(
-          inputGain
+          radioSourceGain
         )
+        .connect(inputGain)
         .connect(
           lowShelf
         )
@@ -1664,6 +1695,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   };
 
+  const screenSaverSources = {
+    lobby: "assets/av-junki-radio-screensaver.webp",
+    "hip-hop": heroSources["hip-hop"],
+    rnb: heroSources.rnb,
+    house: heroSources.house,
+    reggae: heroSources.reggae,
+    gospel: heroSources.gospel
+  };
+
 
   const trackLibrary = {
 
@@ -1978,6 +2018,286 @@ document.addEventListener("DOMContentLoaded", () => {
   ========================================================= */
 const STATION_ADMIN_API_BASE =
   "https://av-junki-radio-admin-api.luvdjsilvah.workers.dev";
+
+const MUSIC_GENRE_CHANNELS = {
+  jazz: "lobby",
+  "hip-hop": "hip-hop",
+  rnb: "rnb",
+  house: "house",
+  reggae: "reggae",
+  gospel: "gospel"
+};
+
+const GENRE_POOLS = {
+  lobby: "jazz",
+  "hip-hop": "nightlife",
+  rnb: "nightlife",
+  house: "nightlife",
+  reggae: "reggae",
+  gospel: "gospel"
+};
+
+let uploadedMusicFingerprint = "";
+
+let imageAds = [];
+let imageAdOverlay = null;
+let imageAdTimer = null;
+let imageAdIndex = 0;
+
+async function loadImageAdsFromApi() {
+  try {
+    const response = await fetch(`${STATION_ADMIN_API_BASE}/api/image-ads`, {
+      cache: "no-store"
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok || !Array.isArray(result.ads)) {
+      throw new Error(result.error || "Image ads unavailable.");
+    }
+    imageAds = result.ads.filter((ad) => Number(ad.enabled) === 1);
+  } catch (error) {
+    console.warn("AV Junki Radio image ads unavailable:", error);
+  }
+}
+
+function hideImageAd() {
+  if (imageAdTimer) window.clearTimeout(imageAdTimer);
+  if (imageAdOverlay) imageAdOverlay.style.display = "none";
+}
+
+function showImageAd() {
+  // Visual-only placement: this function never touches the media player or gain.
+  if (!screenContent || videoPlaybackActive) return;
+  const pool = GENRE_POOLS[activeChannel];
+  const choices = imageAds.filter((ad) => ad.pool === pool);
+  if (!choices.length) return;
+
+  if (!imageAdOverlay) {
+    imageAdOverlay = document.createElement("div");
+    imageAdOverlay.id = "radio-image-ad";
+    imageAdOverlay.style.cssText =
+      "position:absolute;inset:0;z-index:15;display:none;background:#100c09;pointer-events:none";
+    const image = document.createElement("img");
+    image.style.cssText = "width:100%;height:100%;object-fit:contain";
+    imageAdOverlay.appendChild(image);
+    screenContent.appendChild(imageAdOverlay);
+  }
+
+  const ad = choices[imageAdIndex++ % choices.length];
+  const image = imageAdOverlay.querySelector("img");
+  image.src = ad.image_url ||
+    `${STATION_ADMIN_API_BASE}/api/image-ads/${encodeURIComponent(ad.id)}/image`;
+  image.alt = ad.title || "AV Junki Radio sponsor";
+  imageAdOverlay.style.display = "block";
+  if (imageAdTimer) window.clearTimeout(imageAdTimer);
+  imageAdTimer = window.setTimeout(hideImageAd, 12000);
+}
+
+window.showRadioImageAd = showImageAd;
+
+async function loadVideosFromApi() {
+  try {
+    const response = await fetch(`${STATION_ADMIN_API_BASE}/api/videos`, {
+      cache: "no-store"
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok || !Array.isArray(result.videos)) {
+      throw new Error(result.error || "Videos unavailable.");
+    }
+    availableVideos = result.videos.filter((video) => Number(video.enabled) === 1);
+    updateFeatureVideoButton();
+  } catch (error) {
+    console.warn("AV Junki Radio videos unavailable:", error);
+  }
+}
+
+function updateFeatureVideoButton() {
+  if (!screenContent) return;
+  const pool = GENRE_POOLS[activeChannel];
+  const selected = availableVideos.find((video) => video.pool === pool);
+  if (!featureVideoButton && selected) {
+    featureVideoButton = document.createElement("button");
+    featureVideoButton.type = "button";
+    featureVideoButton.id = "radio-watch-video";
+    featureVideoButton.style.cssText =
+      "position:absolute;right:12px;bottom:12px;z-index:16;padding:8px 12px;" +
+      "border:1px solid #d8bb92;border-radius:6px;background:#211711;color:white;cursor:pointer";
+    featureVideoButton.addEventListener("click", () => startFeatureVideo());
+    screenContent.appendChild(featureVideoButton);
+  }
+  if (featureVideoButton) {
+    featureVideoButton.hidden = !selected || videoPlaybackActive;
+    if (selected) featureVideoButton.textContent = `Watch: ${selected.title}`;
+  }
+}
+
+function ensureFeatureVideo() {
+  if (featureVideo || !screenContent) return featureVideo;
+  featureVideo = document.createElement("video");
+  featureVideo.id = "radio-feature-video";
+  featureVideo.crossOrigin = "anonymous";
+  featureVideo.playsInline = true;
+  featureVideo.controls = true;
+  featureVideo.preload = "metadata";
+  featureVideo.style.cssText =
+    "position:absolute;inset:0;width:100%;height:100%;z-index:20;" +
+    "display:none;background:#000;object-fit:contain";
+  featureVideo.addEventListener("ended", () => finishFeatureVideo(true));
+  featureVideo.addEventListener("error", () => {
+    if (videoPlaybackActive) {
+      setStatus("Video playback stopped. Resuming radio.");
+      finishFeatureVideo(true);
+    }
+  });
+  screenContent.appendChild(featureVideo);
+
+  const close = document.createElement("button");
+  close.type = "button";
+  close.textContent = "Close video";
+  close.id = "radio-close-video";
+  close.style.cssText =
+    "position:absolute;top:10px;right:10px;z-index:21;display:none;" +
+    "padding:8px;background:#211711;color:white;border:1px solid #d8bb92;cursor:pointer";
+  close.addEventListener("click", () => finishFeatureVideo(true));
+  screenContent.appendChild(close);
+  return featureVideo;
+}
+
+async function startFeatureVideo() {
+  if (videoPlaybackActive) return;
+  const selected = availableVideos.find((video) => video.pool === GENRE_POOLS[activeChannel]);
+  if (!selected) return;
+  const video = ensureFeatureVideo();
+  if (!video) return;
+  hideImageAd();
+  resumeRadioAfterVideo = Boolean(audio && !audio.paused && hasAudioSource());
+  presetBeforeVideo = activePreset;
+
+  try {
+    await resumeAudioContext();
+    if (!audioGraphReady) throw new Error("Audio processing is unavailable.");
+    if (!featureVideoSource) {
+      featureVideoSource = audioContext.createMediaElementSource(video);
+      featureVideoSource.connect(videoSourceGain).connect(inputGain);
+    }
+    videoSourceGain.gain.value = 0;
+    video.src = selected.video_url ||
+      `${STATION_ADMIN_API_BASE}/api/videos/${encodeURIComponent(selected.id)}/stream`;
+    video.style.display = "block";
+    document.getElementById("radio-close-video").style.display = "block";
+    await video.play();
+
+    videoPlaybackActive = true;
+    updateFeatureVideoButton();
+    applyPreset("video");
+    const now = audioContext.currentTime;
+    radioSourceGain.gain.setTargetAtTime(0, now, 0.08);
+    videoSourceGain.gain.setTargetAtTime(1, now, 0.08);
+    window.setTimeout(() => {
+      if (videoPlaybackActive) audio.pause();
+    }, 350);
+  } catch (error) {
+    video.pause();
+    video.style.display = "none";
+    document.getElementById("radio-close-video").style.display = "none";
+    if (radioSourceGain) radioSourceGain.gain.value = 1;
+    if (videoSourceGain) videoSourceGain.gain.value = 0;
+    applyPreset(presetBeforeVideo);
+    setStatus(error.message || "Unable to play video.");
+  }
+}
+
+async function finishFeatureVideo(shouldResume) {
+  if (!videoPlaybackActive) return;
+  videoPlaybackActive = false;
+  featureVideo.pause();
+  document.getElementById("radio-close-video").style.display = "none";
+  applyPreset(presetBeforeVideo);
+
+  if (shouldResume && resumeRadioAfterVideo) {
+    if (activeChannel === LIVE_STATION_CHANNEL) {
+      await syncToLiveStation(true);
+    } else if (hasAudioSource()) {
+      await resumeAudioContext();
+      await audio.play().catch((error) => console.warn("Radio resume failed:", error));
+    }
+  }
+
+  if (audioContext && radioSourceGain && videoSourceGain) {
+    const now = audioContext.currentTime;
+    videoSourceGain.gain.setTargetAtTime(0, now, 0.08);
+    radioSourceGain.gain.setTargetAtTime(1, now, 0.08);
+  }
+  featureVideo.style.display = "none";
+  featureVideo.removeAttribute("src");
+  featureVideo.load();
+  updateFeatureVideoButton();
+}
+
+function musicTitleAndArtist(item) {
+  const filename = String(item.original_filename || "").replace(/\.[^.]+$/, "");
+  const match = filename.match(/^(.+?)_by_(.+)$/i);
+  const readable = (value) => value.replace(/[_-]+/g, " ").trim();
+  return {
+    title: item.title || readable(match ? match[1] : filename) || "AV Junki Radio",
+    artist: item.artist || (match ? readable(match[2]) : "AV Junki Radio")
+  };
+}
+
+async function loadMusicFromApi() {
+  try {
+    const response = await fetch(`${STATION_ADMIN_API_BASE}/api/music`, {
+      cache: "no-store"
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok || !Array.isArray(result.music)) {
+      throw new Error(result.error || "Could not load music library.");
+    }
+
+    const published = result.music.filter((item) =>
+      Number(item.enabled) === 1 && MUSIC_GENRE_CHANNELS[item.genre] &&
+      item.r2_key && Number(item.duration_seconds) > 0
+    );
+    const fingerprint = JSON.stringify(published.map((item) =>
+      [item.id, item.genre, item.duration_seconds, item.artwork_key, item.title, item.artist]
+    ));
+    if (fingerprint === uploadedMusicFingerprint) return true;
+
+    for (const config of Object.values(channelConfig)) {
+      config.tracks = config.tracks.filter((track) => !track.adminMusicId);
+    }
+    for (const item of published) {
+      const channel = MUSIC_GENRE_CHANNELS[item.genre];
+      const duration = Number(item.duration_seconds);
+
+      const src = item.audio_url ||
+        `${STATION_ADMIN_API_BASE}/api/music/${encodeURIComponent(item.id)}/audio`;
+      const artwork = item.artwork_url ||
+        (item.artwork_key
+          ? `${STATION_ADMIN_API_BASE}/api/music/${encodeURIComponent(item.id)}/artwork`
+          : "");
+      const track = {
+        ...musicTitleAndArtist(item),
+        artwork,
+        src,
+        video: "",
+        preset: "music",
+        adminMusicId: item.id
+      };
+      liveDurationSeconds[src] = duration;
+      channelConfig[channel].tracks.push(track);
+    }
+
+    const wasLoaded = uploadedMusicFingerprint !== "";
+    uploadedMusicFingerprint = fingerprint;
+    playlist = channelConfig[activeChannel].tracks;
+    if (wasLoaded) buildLiveStationProgram();
+
+    return true;
+  } catch (error) {
+    console.warn("AV Junki Radio music library unavailable:", error);
+    return false;
+  }
+}
 let stationIds = [
 
     {
@@ -2061,6 +2381,16 @@ let stationIds = [
     }
 
   ];
+
+  let stationIdsByPool = {
+    jazz: stationIds,
+    nightlife: [],
+    reggae: [],
+    gospel: []
+  };
+
+  let genreSongCount = 0;
+  let genreDropIndex = 0;
 
 
   const liveDurationSeconds = {
@@ -2224,15 +2554,19 @@ async function loadStationIdsFromApi() {
                 drop.artist ||
                 "AV Junki Radio",
 
-              artwork: "",
+              artwork: drop.artwork_url ||
+                (drop.artwork_key
+                  ? `${STATION_ADMIN_API_BASE}/api/drops/${encodeURIComponent(drop.slot_key)}/artwork`
+                  : ""),
 
               src,
 
               video: "",
 
-              preset: "music",
+              preset: "drop",
 
-              isStationId: true
+              isStationId: true,
+              pool: drop.pool || "jazz"
 
             };
 
@@ -2251,8 +2585,13 @@ async function loadStationIdsFromApi() {
 
     }
 
-    stationIds =
-      apiStationIds;
+    stationIdsByPool = {
+      jazz: apiStationIds.filter((drop) => drop.pool === "jazz"),
+      nightlife: apiStationIds.filter((drop) => drop.pool === "nightlife"),
+      reggae: apiStationIds.filter((drop) => drop.pool === "reggae"),
+      gospel: apiStationIds.filter((drop) => drop.pool === "gospel")
+    };
+    if (stationIdsByPool.jazz.length) stationIds = stationIdsByPool.jazz;
 
     return true;
 
@@ -3007,15 +3346,33 @@ async function loadStationIdsFromApi() {
   }
 
 
- async function initializeLiveStation() {
+  async function initializeLiveStation() {
 
-  await loadStationIdsFromApi();
+  await Promise.all([
+    loadStationIdsFromApi(), loadMusicFromApi(), loadImageAdsFromApi(), loadVideosFromApi()
+  ]);
 
   buildLiveStationProgram();
+
+  // The page can finish loading before the API responds. Show the fetched
+  // playlist without interrupting a song the listener has already started.
+  if (activeChannel === LIVE_STATION_CHANNEL && audio?.paused) {
+    syncToLiveStation(false);
+  } else if (activeChannel !== LIVE_STATION_CHANNEL) {
+    playlist = channelConfig[activeChannel].tracks;
+    if (playlist.length && !hasAudioSource()) loadTrack(0, false);
+  }
 
 }
 
 initializeLiveStation();
+
+window.setInterval(() => {
+  loadMusicFromApi();
+  loadImageAdsFromApi();
+  loadVideosFromApi();
+  loadStationIdsFromApi();
+}, 60 * 1000);
 
 
   let activeChannel =
@@ -3117,6 +3474,15 @@ initializeLiveStation();
         }
       );
 
+  }
+
+  function setScreenSaver(channel) {
+    if (!screenSaverImage) return;
+    const src = screenSaverSources[channel] || screenSaverSources.lobby;
+    if (screenSaverImage.getAttribute("src") !== src) {
+      screenSaverImage.style.display = "block";
+      screenSaverImage.src = src;
+    }
   }
 
 
@@ -3222,21 +3588,25 @@ initializeLiveStation();
 
     }
 
-    const wasPlaying =
-      Boolean(
-        audio &&
-        !audio.paused &&
-        hasAudioSource()
-      );
+    const wasPlaying = videoPlaybackActive
+      ? resumeRadioAfterVideo
+      : Boolean(audio && !audio.paused && hasAudioSource());
+
+    if (videoPlaybackActive) finishFeatureVideo(false);
 
     activeChannel =
       channel;
+
+    hideImageAd();
 
     playlist =
       config.tracks;
 
     currentTrackIndex =
       0;
+
+    genreSongCount = 0;
+    genreDropIndex = 0;
 
     if (
       playPause &&
@@ -3275,6 +3645,10 @@ initializeLiveStation();
     setHero(
       config.hero
     );
+
+    setScreenSaver(channel);
+
+    updateFeatureVideoButton();
 
     setActivePanel(
       channel
@@ -3691,6 +4065,9 @@ initializeLiveStation();
       return;
 
     }
+
+    visual.style.backgroundImage =
+      `url("${currentDropArtwork || DROP_SCREEN_SRC}")`;
 
     if (
       screenSaver
@@ -4298,6 +4675,21 @@ initializeLiveStation();
 
 }
 
+    if (!currentTrackIsStationId) {
+      genreSongCount += 1;
+      const pool = stationIdsByPool[GENRE_POOLS[activeChannel]] || [];
+      if (genreSongCount >= LIVE_STATION_SONGS_PER_ID && pool.length) {
+        genreSongCount = 0;
+        const drop = pool[genreDropIndex++ % pool.length];
+        window.setRadioTrack(drop);
+        resumeAudioContext().then(() => audio.play()).catch((error) => {
+          console.warn("AV Junki Radio drop playback error:", error);
+          playNextTrack();
+        });
+        return;
+      }
+    }
+
     if (
       playlist.length <=
       1
@@ -4420,6 +4812,11 @@ initializeLiveStation();
       .addEventListener(
         "click",
         async () => {
+
+          if (videoPlaybackActive) {
+            await finishFeatureVideo(true);
+            return;
+          }
 
           if (
             activeChannel ===
@@ -4756,6 +5153,8 @@ initializeLiveStation();
         Boolean(
           isStationId
         );
+
+      currentDropArtwork = currentTrackIsStationId ? artwork : "";
 
 
       if (
@@ -5216,6 +5615,8 @@ initializeLiveStation();
     1000
   );
 
+  window.setInterval(showImageAd, 5 * 60 * 1000);
+
   showSport(
     0
   );
@@ -5241,6 +5642,8 @@ initializeLiveStation();
   updateDowDisplay();
 
   showScreenSaver();
+
+  setScreenSaver(activeChannel);
 
   setActivePanel(
     activeChannel

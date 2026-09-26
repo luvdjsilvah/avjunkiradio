@@ -168,6 +168,34 @@
       overflow-wrap: anywhere;
     }
 
+    .artwork-preview {
+      display: block;
+      max-width: 100%;
+      max-height: 170px;
+      margin: 10px 0;
+      border-radius: 8px;
+      object-fit: contain;
+    }
+
+    .form-field {
+      display: block;
+      margin-top: 14px;
+      color: #d5bda9;
+      font-size: 14px;
+    }
+
+    .form-field select,
+    .form-field input:not([type="file"]) {
+      display: block;
+      width: 100%;
+      margin-top: 6px;
+      padding: 10px;
+      color: #f4eee8;
+      background: #211711;
+      border: 1px solid #80614d;
+      border-radius: 8px;
+    }
+
     .message {
       min-height: 18px;
       margin-top: 10px;
@@ -273,6 +301,14 @@
 
   <main>
 
+    <div class="status" id="adminAuthStatus">
+      <label class="form-field" for="adminApiToken">Admin API key
+        <input id="adminApiToken" type="password" autocomplete="off" placeholder="Enter your Worker admin key">
+      </label>
+      <button class="button" id="saveAdminApiToken" type="button">Use key for this tab</button>
+      <div class="message" id="adminTokenMessage" role="status"></div>
+    </div>
+
     <div class="status" id="apiStatus">
       Connecting to AV Junki Radio Admin API...
     </div>
@@ -353,7 +389,7 @@
     <input
       id="musicUploadFile"
       type="file"
-      accept=".mp3,.wav,.m4a,audio/mpeg,audio/wav,audio/mp4,audio/x-m4a"
+      accept=".mp3,audio/mpeg"
     >
 
     <div class="selected-file" id="musicSelectedFile">
@@ -376,6 +412,20 @@
       <option value="unassigned">Unassigned</option>
     </select>
 
+    <label class="button form-field" for="musicAlbumArt">
+      Choose Album Art
+    </label>
+    <input id="musicAlbumArt" type="file" accept="image/png,image/jpeg,image/webp">
+    <div class="selected-file" id="musicAlbumArtSelected">No album art selected.</div>
+
+    <label class="form-field" for="musicEnabled">
+      Status
+      <select id="musicEnabled">
+        <option value="1">Enabled</option>
+        <option value="0">Disabled</option>
+      </select>
+    </label>
+
     <button
       class="button upload-button"
       id="musicUploadButton"
@@ -396,12 +446,59 @@
 
 <section class="admin-section" id="section-images">
   <h2 class="section-title">Image Ads</h2>
-  <p>Image ad upload tools will go here.</p>
+  <div class="music-upload-panel">
+    <p>Visual only. The radio audio keeps playing underneath.</p>
+    <label class="button" for="imageAdFile">Choose Image Ad</label>
+    <input id="imageAdFile" type="file" accept="image/png,image/jpeg,image/webp">
+    <div class="selected-file" id="imageAdSelected">No image selected.</div>
+    <label class="form-field" for="imageAdTitle">Ad name
+      <input id="imageAdTitle" type="text" maxlength="120" placeholder="Sponsor or campaign name">
+    </label>
+    <label class="form-field" for="imageAdPool">Lobby / genre pool
+      <select id="imageAdPool">
+        <option value="jazz">Jazz</option>
+        <option value="nightlife">Hip Hop / R&amp;B / House</option>
+        <option value="reggae">Reggae</option>
+        <option value="gospel">Gospel</option>
+      </select>
+    </label>
+    <label class="form-field" for="imageAdEnabled">Status
+      <select id="imageAdEnabled"><option value="1">Enabled</option><option value="0">Disabled</option></select>
+    </label>
+    <button class="button upload-button" id="imageAdUpload" type="button">Upload Image Ad</button>
+    <div class="message" id="imageAdMessage"></div>
+  </div>
+  <div class="drop-grid" id="imageAdItems"></div>
 </section>
 
 <section class="admin-section" id="section-video">
   <h2 class="section-title">Video</h2>
-  <p>Video upload tools will go here.</p>
+  <div class="music-upload-panel">
+    <p>Upload one video with its own sound. A separate audio file is not needed.</p>
+    <label class="button" for="videoFile">Choose Video</label>
+    <input id="videoFile" type="file" accept="video/mp4,video/webm">
+    <div class="selected-file" id="videoSelected">No video selected.</div>
+    <label class="button form-field" for="videoThumbnail">Choose Thumbnail (Optional)</label>
+    <input id="videoThumbnail" type="file" accept="image/png,image/jpeg,image/webp">
+    <div class="selected-file" id="videoThumbnailSelected">No thumbnail selected.</div>
+    <label class="form-field" for="videoTitle">Title
+      <input id="videoTitle" type="text" maxlength="120" placeholder="Video title">
+    </label>
+    <label class="form-field" for="videoPool">Lobby / genre pool
+      <select id="videoPool">
+        <option value="jazz">Jazz</option>
+        <option value="nightlife">Hip Hop / R&amp;B / House</option>
+        <option value="reggae">Reggae</option>
+        <option value="gospel">Gospel</option>
+      </select>
+    </label>
+    <label class="form-field" for="videoEnabled">Status
+      <select id="videoEnabled"><option value="1">Enabled</option><option value="0">Disabled</option></select>
+    </label>
+    <button class="button upload-button" id="videoUpload" type="button">Upload Video</button>
+    <div class="message" id="videoMessage" role="status"></div>
+  </div>
+  <div class="drop-grid" id="videoItems"></div>
 </section>
 
     <footer>
@@ -415,6 +512,29 @@
 
     const API_BASE =
       "https://av-junki-radio-admin-api.luvdjsilvah.workers.dev";
+
+    let adminApiToken = "";
+    const adminTokenMessage = document.getElementById("adminTokenMessage");
+    document.getElementById("saveAdminApiToken").addEventListener("click", () => {
+      adminApiToken = document.getElementById("adminApiToken").value.trim();
+      document.getElementById("adminApiToken").value = "";
+      adminTokenMessage.textContent = adminApiToken
+        ? "Admin key ready for this tab." : "Enter your admin key first.";
+      adminTokenMessage.className = `message ${adminApiToken ? "good" : "bad"}`;
+    });
+
+    async function adminFetch(url, options = {}) {
+      if ((options.method || "GET").toUpperCase() === "GET") return fetch(url, options);
+      if (!adminApiToken) throw new Error("Enter your admin API key above before saving or uploading.");
+      const headers = new Headers(options.headers || {});
+      headers.set("Authorization", `Bearer ${adminApiToken}`);
+      const response = await fetch(url, { ...options, headers });
+      if (response.status === 401) {
+        adminTokenMessage.textContent = "Admin key was rejected. Enter the current Worker key.";
+        adminTokenMessage.className = "message bad";
+      }
+      return response;
+    }
 
     const apiStatus =
       document.getElementById("apiStatus");
@@ -548,7 +668,7 @@ if (drop.r2_key) {
       try {
 
         const response =
-          await fetch(
+          await adminFetch(
             `${API_BASE}/api/health`,
             {
               cache: "no-store"
@@ -636,6 +756,25 @@ if (drop.r2_key) {
           ${escapeHtml(drop.version)}
         </p>
 
+        ${drop.artwork_url || drop.artwork_key
+          ? `<img class="artwork-preview" alt="Artwork for ${escapeHtml(drop.title)}"
+              src="${escapeHtml(drop.artwork_url || `${API_BASE}/api/drops/${encodeURIComponent(slot)}/artwork`)}">`
+          : ""}
+
+        <label class="form-field" for="pool-${escapeHtml(slot)}">Genre pool
+          <select id="pool-${escapeHtml(slot)}">
+            <option value="jazz" ${(drop.pool || "jazz") === "jazz" ? "selected" : ""}>Jazz</option>
+            <option value="nightlife" ${drop.pool === "nightlife" ? "selected" : ""}>Hip Hop / R&amp;B / House</option>
+            <option value="reggae" ${drop.pool === "reggae" ? "selected" : ""}>Reggae</option>
+            <option value="gospel" ${drop.pool === "gospel" ? "selected" : ""}>Gospel</option>
+          </select>
+        </label>
+        <button class="button" id="save-pool-${escapeHtml(slot)}" type="button">Save Genre Pool</button>
+
+        <label class="button form-field" for="drop-art-${escapeHtml(slot)}">Choose Drop Artwork (Optional)</label>
+        <input id="drop-art-${escapeHtml(slot)}" type="file" accept="image/png,image/jpeg,image/webp">
+        <button class="button upload-button" id="save-art-${escapeHtml(slot)}" type="button">Save Drop Artwork</button>
+
         ${
           audioUrl
             ? `
@@ -662,7 +801,7 @@ if (drop.r2_key) {
         <input
           id="file-${escapeHtml(slot)}"
           type="file"
-          accept=".mp3,.wav,.m4a,audio/mpeg,audio/wav,audio/mp4,audio/x-m4a"
+          accept=".mp3,audio/mpeg"
         >
 
         <div
@@ -707,6 +846,48 @@ if (drop.r2_key) {
         card.querySelector(
           `#message-${CSS.escape(slot)}`
         );
+
+      const poolSelect = card.querySelector(`#pool-${CSS.escape(slot)}`);
+      const artworkInput = card.querySelector(`#drop-art-${CSS.escape(slot)}`);
+
+      card.querySelector(`#save-pool-${CSS.escape(slot)}`).addEventListener("click", async () => {
+        try {
+          const response = await adminFetch(`${API_BASE}/api/drops/${encodeURIComponent(slot)}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pool: poolSelect.value })
+          });
+          const result = await response.json();
+          if (!response.ok || !result.ok) throw new Error(result.error || "Could not save genre pool.");
+          message.className = "message good";
+          message.textContent = "Genre pool saved.";
+        } catch (error) {
+          message.className = "message bad";
+          message.textContent = error.message || String(error);
+        }
+      });
+
+      card.querySelector(`#save-art-${CSS.escape(slot)}`).addEventListener("click", async () => {
+        const art = artworkInput.files?.[0];
+        if (!art) {
+          message.className = "message bad";
+          message.textContent = "Choose artwork first.";
+          return;
+        }
+        const form = new FormData();
+        form.append("artwork", art);
+        try {
+          const response = await adminFetch(`${API_BASE}/api/drops/${encodeURIComponent(slot)}/artwork`, {
+            method: "POST", body: form
+          });
+          const result = await response.json();
+          if (!response.ok || !result.ok) throw new Error(result.error || "Could not save drop artwork.");
+          await loadDrops();
+        } catch (error) {
+          message.className = "message bad";
+          message.textContent = error.message || String(error);
+        }
+      });
 
 
       fileInput.addEventListener(
@@ -783,9 +964,11 @@ formData.append(
   "duration",
   String(await getAudioDuration(file))
 );
+            formData.append("pool", poolSelect.value);
+            if (artworkInput.files?.[0]) formData.append("artwork", artworkInput.files[0]);
 
             const response =
-              await fetch(
+              await adminFetch(
                 `${API_BASE}/api/drops/${encodeURIComponent(slot)}/upload`,
                 {
                   method: "POST",
@@ -861,7 +1044,7 @@ formData.append(
       try {
 
         const response =
-          await fetch(
+          await adminFetch(
             `${API_BASE}/api/drops`,
             {
               cache: "no-store"
@@ -1000,6 +1183,10 @@ const musicSelectedFile =
 const musicGenre =
   document.getElementById("musicGenre");
 
+const musicAlbumArt = document.getElementById("musicAlbumArt");
+const musicAlbumArtSelected = document.getElementById("musicAlbumArtSelected");
+const musicEnabled = document.getElementById("musicEnabled");
+
 const musicUploadButton =
   document.getElementById("musicUploadButton");
 
@@ -1052,6 +1239,11 @@ musicGenre.addEventListener(
   }
 );
 
+musicAlbumArt.addEventListener("change", () => {
+  musicAlbumArtSelected.textContent = musicAlbumArt.files?.[0]?.name ||
+    "No album art selected.";
+});
+
 
 musicUploadButton.addEventListener(
   "click",
@@ -1097,6 +1289,11 @@ musicUploadButton.addEventListener(
         genre
       );
 
+      if (musicAlbumArt.files?.[0]) {
+        formData.append("artwork", musicAlbumArt.files[0]);
+      }
+      formData.append("enabled", musicEnabled.value);
+
       formData.append(
         "duration",
         String(
@@ -1106,7 +1303,7 @@ musicUploadButton.addEventListener(
 
 
       const response =
-        await fetch(
+        await adminFetch(
           `${API_BASE}/api/music/upload`,
           {
             method: "POST",
@@ -1140,6 +1337,11 @@ musicUploadButton.addEventListener(
 
       musicUploadFile.value =
         "";
+
+      musicAlbumArt.value = "";
+      musicAlbumArtSelected.textContent = "No album art selected.";
+
+      musicEnabled.value = "1";
 
       musicGenre.value =
         "";
@@ -1178,7 +1380,7 @@ musicUploadButton.addEventListener(
   try {
 
     const response =
-      await fetch(
+      await adminFetch(
         `${API_BASE}/api/music`,
         {
           cache: "no-store"
@@ -1220,6 +1422,7 @@ musicUploadButton.addEventListener(
             <div
               class="drop-card music-item"
               data-genre="${escapeHtml(item.genre || "unassigned")}"
+              data-music-id="${escapeHtml(item.id)}"
             >
               <div class="slot-label">
                 ${escapeHtml(item.genre || "Unassigned")}
@@ -1238,10 +1441,70 @@ musicUploadButton.addEventListener(
                 Status:
                 ${Number(item.enabled) === 1 ? "Enabled" : "Disabled"}
               </p>
+
+              ${item.artwork_url || item.artwork_key
+                ? `<img class="artwork-preview" alt="Album art for ${escapeHtml(item.original_filename)}"
+                    src="${escapeHtml(item.artwork_url || `${API_BASE}/api/music/${encodeURIComponent(item.id)}/artwork`)}">`
+                : "<p>No album art uploaded.</p>"}
+
+              <label class="button" for="music-art-${escapeHtml(item.id)}">Choose Album Art</label>
+              <input id="music-art-${escapeHtml(item.id)}" class="music-art-file"
+                type="file" accept="image/png,image/jpeg,image/webp">
+              <button class="button upload-button music-art-save" type="button">Save Album Art</button>
+
+              <label class="form-field">Playback status
+                <select class="music-status">
+                  <option value="1" ${Number(item.enabled) === 1 ? "selected" : ""}>Enabled</option>
+                  <option value="0" ${Number(item.enabled) !== 1 ? "selected" : ""}>Disabled</option>
+                </select>
+              </label>
+              <button class="button music-status-save" type="button">Save Status</button>
+              <div class="message music-item-message"></div>
             </div>
           `
         )
         .join("");
+
+    for (const card of musicItems.querySelectorAll(".music-item")) {
+      const id = card.dataset.musicId;
+      const message = card.querySelector(".music-item-message");
+      const showResult = (error, success) => {
+        message.className = `message ${error ? "bad" : "good"}`;
+        message.textContent = error || success;
+      };
+
+      card.querySelector(".music-art-save").addEventListener("click", async () => {
+        const file = card.querySelector(".music-art-file").files?.[0];
+        if (!file) return showResult("Choose an image first.", "");
+        const form = new FormData();
+        form.append("artwork", file);
+        try {
+          const response = await adminFetch(`${API_BASE}/api/music/${encodeURIComponent(id)}/artwork`, {
+            method: "POST", body: form
+          });
+          const result = await response.json();
+          if (!response.ok || !result.ok) throw new Error(result.error || "Artwork upload failed.");
+          await loadMusicLibrary();
+        } catch (error) {
+          showResult(error.message || String(error), "");
+        }
+      });
+
+      card.querySelector(".music-status-save").addEventListener("click", async () => {
+        try {
+          const response = await adminFetch(`${API_BASE}/api/music/${encodeURIComponent(id)}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ enabled: Number(card.querySelector(".music-status").value) })
+          });
+          const result = await response.json();
+          if (!response.ok || !result.ok) throw new Error(result.error || "Status update failed.");
+          await loadMusicLibrary();
+        } catch (error) {
+          showResult(error.message || String(error), "");
+        }
+      });
+    }
 
   } catch (error) {
 
@@ -1261,6 +1524,199 @@ musicUploadButton.addEventListener(
 loadMusicLibrary(
   
 );
+
+const imageAdFile = document.getElementById("imageAdFile");
+const imageAdSelected = document.getElementById("imageAdSelected");
+const imageAdMessage = document.getElementById("imageAdMessage");
+const imageAdItems = document.getElementById("imageAdItems");
+
+imageAdFile.addEventListener("change", () => {
+  imageAdSelected.textContent = imageAdFile.files?.[0]?.name || "No image selected.";
+});
+
+async function loadImageAds() {
+  try {
+    const response = await adminFetch(`${API_BASE}/api/image-ads`, { cache: "no-store" });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || "Could not load image ads.");
+    imageAdItems.innerHTML = (result.ads || []).map((ad) => `
+      <div class="drop-card" data-ad-id="${escapeHtml(ad.id)}">
+        <div class="slot-label">${escapeHtml(ad.pool)}</div>
+        <h2>${escapeHtml(ad.title)}</h2>
+        <img class="artwork-preview" alt="${escapeHtml(ad.title)}"
+          src="${escapeHtml(ad.image_url || `${API_BASE}/api/image-ads/${encodeURIComponent(ad.id)}/image`)}">
+        <label class="form-field">Status
+          <select class="ad-status">
+            <option value="1" ${Number(ad.enabled) === 1 ? "selected" : ""}>Enabled</option>
+            <option value="0" ${Number(ad.enabled) !== 1 ? "selected" : ""}>Disabled</option>
+          </select>
+        </label>
+        <button class="button ad-status-save" type="button">Save Status</button>
+        <div class="message ad-message"></div>
+      </div>`).join("") || "<p>No image ads uploaded.</p>";
+
+    for (const card of imageAdItems.querySelectorAll("[data-ad-id]")) {
+      card.querySelector(".ad-status-save").addEventListener("click", async () => {
+        const message = card.querySelector(".ad-message");
+        try {
+          const response = await adminFetch(`${API_BASE}/api/image-ads/${encodeURIComponent(card.dataset.adId)}`, {
+            method: "PATCH", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ enabled: Number(card.querySelector(".ad-status").value) })
+          });
+          const result = await response.json();
+          if (!response.ok || !result.ok) throw new Error(result.error || "Could not update ad.");
+          message.className = "message good";
+          message.textContent = "Status saved.";
+        } catch (error) {
+          message.className = "message bad";
+          message.textContent = error.message || String(error);
+        }
+      });
+    }
+  } catch (error) {
+    imageAdItems.textContent = `Unable to load image ads: ${error.message || error}`;
+  }
+}
+
+document.getElementById("imageAdUpload").addEventListener("click", async () => {
+  const file = imageAdFile.files?.[0];
+  if (!file) {
+    imageAdMessage.className = "message bad";
+    imageAdMessage.textContent = "Choose an image first.";
+    return;
+  }
+  const form = new FormData();
+  form.append("image", file);
+  form.append("title", document.getElementById("imageAdTitle").value.trim() || file.name);
+  form.append("pool", document.getElementById("imageAdPool").value);
+  form.append("enabled", document.getElementById("imageAdEnabled").value);
+  try {
+    const response = await adminFetch(`${API_BASE}/api/image-ads/upload`, { method: "POST", body: form });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || "Image ad upload failed.");
+    imageAdMessage.className = "message good";
+    imageAdMessage.textContent = "Image ad uploaded.";
+    imageAdFile.value = "";
+    imageAdSelected.textContent = "No image selected.";
+    await loadImageAds();
+  } catch (error) {
+    imageAdMessage.className = "message bad";
+    imageAdMessage.textContent = error.message || String(error);
+  }
+});
+
+loadImageAds();
+
+const videoFile = document.getElementById("videoFile");
+const videoThumbnail = document.getElementById("videoThumbnail");
+const videoMessage = document.getElementById("videoMessage");
+const videoItems = document.getElementById("videoItems");
+const videoUpload = document.getElementById("videoUpload");
+
+for (const [input, output, empty] of [
+  [videoFile, document.getElementById("videoSelected"), "No video selected."],
+  [videoThumbnail, document.getElementById("videoThumbnailSelected"), "No thumbnail selected."]
+]) {
+  input.addEventListener("change", () => {
+    output.textContent = input.files?.[0]?.name || empty;
+  });
+}
+
+async function loadVideos() {
+  try {
+    const response = await adminFetch(`${API_BASE}/api/videos`, { cache: "no-store" });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || "Could not load videos.");
+    videoItems.innerHTML = (result.videos || []).map((item) => `
+      <div class="drop-card" data-video-id="${escapeHtml(item.id)}">
+        <div class="slot-label">${escapeHtml(item.pool)}</div>
+        <h2>${escapeHtml(item.title)}</h2>
+        <p>${Number(item.enabled) === 1 ? "Enabled" : "Disabled"}</p>
+        ${item.thumbnail_url || item.thumbnail_key
+          ? `<img class="artwork-preview" alt="Thumbnail for ${escapeHtml(item.title)}"
+               src="${escapeHtml(item.thumbnail_url || `${API_BASE}/api/videos/${encodeURIComponent(item.id)}/thumbnail`)}">`
+          : ""}
+      </div>`).join("") || "<p>No videos uploaded.</p>";
+  } catch (error) {
+    videoItems.textContent = `Unable to load videos: ${error.message || error}`;
+  }
+}
+
+videoUpload.addEventListener("click", async () => {
+  const file = videoFile.files?.[0];
+  if (!file) {
+    videoMessage.className = "message bad";
+    videoMessage.textContent = "Choose a video first.";
+    return;
+  }
+  videoUpload.disabled = true;
+  videoMessage.className = "message";
+  try {
+    // Each part stays below the Worker request limit, even for a large video.
+    const partSize = 10 * 1024 * 1024;
+    const initResponse = await adminFetch(`${API_BASE}/api/videos/uploads`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        filename: file.name, contentType: file.type, size: file.size,
+        title: document.getElementById("videoTitle").value.trim() || file.name,
+        pool: document.getElementById("videoPool").value,
+        enabled: Number(document.getElementById("videoEnabled").value)
+      })
+    });
+    const upload = await initResponse.json();
+    if (!initResponse.ok || !upload.ok || !upload.uploadId) {
+      throw new Error(upload.error || "Could not start video upload.");
+    }
+    const parts = [];
+    const total = Math.ceil(file.size / partSize);
+    for (let index = 0; index < total; index += 1) {
+      videoMessage.textContent = `Uploading video part ${index + 1} of ${total}...`;
+      const response = await adminFetch(
+        `${API_BASE}/api/videos/uploads/${encodeURIComponent(upload.uploadId)}/parts/${index + 1}`,
+        { method: "PUT", headers: { "Content-Type": "application/octet-stream" },
+          body: file.slice(index * partSize, (index + 1) * partSize) }
+      );
+      const part = await response.json();
+      if (!response.ok || !part.ok || !part.etag) {
+        throw new Error(part.error || `Video part ${index + 1} failed.`);
+      }
+      parts.push({ partNumber: index + 1, etag: part.etag });
+    }
+    const completeResponse = await adminFetch(
+      `${API_BASE}/api/videos/uploads/${encodeURIComponent(upload.uploadId)}/complete`,
+      { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parts }) }
+    );
+    const completed = await completeResponse.json();
+    if (!completeResponse.ok || !completed.ok) {
+      throw new Error(completed.error || "Could not finish video upload.");
+    }
+    if (videoThumbnail.files?.[0] && completed.video?.id) {
+      const form = new FormData();
+      form.append("thumbnail", videoThumbnail.files[0]);
+      const thumbResponse = await adminFetch(
+        `${API_BASE}/api/videos/${encodeURIComponent(completed.video.id)}/thumbnail`,
+        { method: "POST", body: form }
+      );
+      const thumbResult = await thumbResponse.json();
+      if (!thumbResponse.ok || !thumbResult.ok) {
+        throw new Error(thumbResult.error || "Video saved, but thumbnail upload failed.");
+      }
+    }
+    videoMessage.className = "message good";
+    videoMessage.textContent = "Video uploaded with its embedded audio.";
+    videoFile.value = "";
+    videoThumbnail.value = "";
+    await loadVideos();
+  } catch (error) {
+    videoMessage.className = "message bad";
+    videoMessage.textContent = error.message || String(error);
+  } finally {
+    videoUpload.disabled = false;
+  }
+});
+
+loadVideos();
 
 </script>
 </body>
