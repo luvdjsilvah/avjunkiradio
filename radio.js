@@ -5718,72 +5718,43 @@ setMainstreamState(
   }
 
 
-  function startNextTrackFadeIn() {
+function startNextTrackFadeIn() {
 
-    if (
-      !audioGraphReady ||
-      !radioSourceGain ||
-      !audioContext
-    ) {
-
-      smoothTransitionPending =
-        false;
-
-      trackEndFadeStarted =
-        false;
-
-      return;
-
-    }
-
-    const gain =
-      radioSourceGain.gain;
-
-    const now =
-      audioContext.currentTime;
-
-    gain.cancelScheduledValues(
-      now
-    );
-
-    if (
-      smoothTransitionPending
-    ) {
-
-      gain.setValueAtTime(
-        0,
-        now
-      );
-
-      gain.linearRampToValueAtTime(
-        1,
-        now +
-          TRACK_START_FADE_SECONDS
-      );
-
-    } else {
-
-      gain.setValueAtTime(
-        gain.value,
-        now
-      );
-
-      gain.linearRampToValueAtTime(
-        1,
-        now +
-          0.08
-      );
-
-    }
-
+  if (
+    !audioGraphReady ||
+    !radioSourceGain ||
+    !audioContext
+  ) {
     smoothTransitionPending =
       false;
 
     trackEndFadeStarted =
       false;
 
+    return;
   }
 
+  const gain =
+    radioSourceGain.gain;
+
+  const now =
+    audioContext.currentTime;
+
+  gain.cancelScheduledValues(
+    now
+  );
+
+  gain.setValueAtTime(
+    1,
+    now
+  );
+
+  smoothTransitionPending =
+    false;
+
+  trackEndFadeStarted =
+    false;
+}
 
   if (
     audio
