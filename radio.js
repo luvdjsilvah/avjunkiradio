@@ -2213,14 +2213,40 @@ async function finishFeatureVideo(shouldResume) {
   document.getElementById("radio-close-video").style.display = "none";
   applyPreset(presetBeforeVideo);
 
-  if (shouldResume && resumeRadioAfterVideo) {
-    if (activeChannel === LIVE_STATION_CHANNEL) {
-      await syncToLiveStation(true);
-    } else if (hasAudioSource()) {
-      await resumeAudioContext();
-      await audio.play().catch((error) => console.warn("Radio resume failed:", error));
-    }
+if (
+  shouldResume &&
+  resumeRadioAfterVideo
+) {
+
+  if (
+    isProgrammedStation(
+      activeChannel
+    )
+  ) {
+
+    await syncToLiveStation(
+      true
+    );
+
+  } else if (
+    hasAudioSource()
+  ) {
+
+    await resumeAudioContext();
+
+    await audio
+      .play()
+      .catch(
+        (error) =>
+          console.warn(
+            "Radio resume failed:",
+            error
+          )
+      );
+
   }
+
+}
 
   if (audioContext && radioSourceGain && videoSourceGain) {
     const now = audioContext.currentTime;
@@ -2290,8 +2316,21 @@ async function loadMusicFromApi() {
     const wasLoaded = uploadedMusicFingerprint !== "";
     uploadedMusicFingerprint = fingerprint;
     playlist = channelConfig[activeChannel].tracks;
-    if (wasLoaded) buildLiveStationProgram();
+  if (
+  wasLoaded
+) {
 
+  PROGRAMMED_STATION_CHANNELS.forEach(
+    (channel) => {
+
+      buildLiveStationProgram(
+        channel
+      );
+
+    }
+  );
+
+}
     return true;
   } catch (error) {
     console.warn("AV Junki Radio music library unavailable:", error);
@@ -2607,9 +2646,25 @@ async function loadStationIdsFromApi() {
   }
 
 }
-  const LIVE_STATION_CHANNEL =
-    "lobby";
+ const PROGRAMMED_STATION_CHANNELS =
+  new Set([
+    "lobby",
+    "hip-hop",
+    "rnb",
+    "house",
+    "reggae",
+    "gospel"
+  ]);
 
+function isProgrammedStation(
+  channel
+) {
+
+  return PROGRAMMED_STATION_CHANNELS.has(
+    channel
+  );
+
+}
   const LIVE_STATION_EPOCH_MS =
     Date.parse(
       "2026-09-20T00:00:00Z"
@@ -2624,14 +2679,14 @@ async function loadStationIdsFromApi() {
   const LIVE_STATION_DRIFT_TOLERANCE =
     1.25;
 
-  let liveStationProgram =
-    [];
+const liveStationPrograms =
+  {};
 
-  let liveStationDuration =
-    0;
-  let currentLiveProgramIndex =
-    -1;
+const liveStationDurations =
+  {};
 
+const currentLiveProgramIndexes =
+  {};
   function hashStationSeed(
     value
   ) {
@@ -2787,334 +2842,435 @@ async function loadStationIdsFromApi() {
   }
 
 
-  function buildStationIdQueue(
+function buildStationIdQueue(
+  count,
+  ids,
+  channel
+) {
+
+  const sourceIds =
+    Array.isArray(ids)
+      ? ids
+      : [];
+
+  if (
+    count <= 0 ||
+    !sourceIds.length
+  ) {
+
+    return [];
+
+  }
+
+  const queue =
+    [];
+
+  let previousSource =
+    "";
+
+  let deckNumber =
+    0;
+
+  while (
+    queue.length <
     count
   ) {
 
-    const queue =
-      [];
+    const deck =
+      seededShuffle(
+        sourceIds,
+        `AVJ-${channel}-ID-DECK-${deckNumber}`
+      );
 
-    let previousSource =
-      "";
-
-    let deckNumber =
-      0;
-
-    while (
-      queue.length <
-      count
+    if (
+      previousSource &&
+      deck.length > 1 &&
+      deck[0].src ===
+        previousSource
     ) {
 
-      const deck =
-        seededShuffle(
-          stationIds,
-          `AVJ-ID-DECK-${deckNumber}`
+      [
+        deck[0],
+        deck[1]
+      ] = [
+        deck[1],
+        deck[0]
+      ];
+
+    }
+
+    deck.forEach(
+      (stationId) => {
+
+        queue.push(
+          stationId
+        );
+
+      }
+    );
+
+    previousSource =
+      deck[
+        deck.length - 1
+      ].src;
+
+    deckNumber +=
+      1;
+
+  }
+
+  return queue.slice(
+    0,
+    count
+  );
+
+}
+
+
+function buildLiveStationProgram(
+  channel
+) {
+
+  if (
+    !isProgrammedStation(
+      channel
+    )
+  ) {
+
+    return;
+
+  }
+
+  const config =
+    channelConfig[
+      channel
+    ];
+
+  if (
+    !config
+  ) {
+
+    return;
+
+  }
+
+  const stationTracks =
+    config.tracks.map(
+      (track, index) => ({
+
+        track,
+
+        playlistIndex:
+          index
+
+      })
+    );
+
+  if (
+    !stationTracks.length
+  ) {
+
+    liveStationPrograms[
+      channel
+    ] = [];
+
+    liveStationDurations[
+      channel
+    ] = 0;
+
+    currentLiveProgramIndexes[
+      channel
+    ] = -1;
+
+    return;
+
+  }
+
+  const poolName =
+    GENRE_POOLS[
+      channel
+    ];
+
+  const stationIdsForChannel =
+    stationIdsByPool[
+      poolName
+    ] || [];
+
+  const idsPerRound =
+    Math.floor(
+      stationTracks.length /
+      LIVE_STATION_SONGS_PER_ID
+    );
+
+  const idQueue =
+    buildStationIdQueue(
+      idsPerRound *
+        LIVE_STATION_ROUNDS,
+      stationIdsForChannel,
+      channel
+    );
+
+  const program =
+    [];
+
+  let stationIdIndex =
+    0;
+
+  let previousLastSource =
+    "";
+
+  for (
+    let round = 0;
+
+    round <
+      LIVE_STATION_ROUNDS;
+
+    round += 1
+  ) {
+
+    const order =
+      seededShuffle(
+        stationTracks,
+        `AVJ-${channel}-ROUND-${round}`
+      );
+
+    if (
+      previousLastSource &&
+      order.length > 1 &&
+      order[0].track.src ===
+        previousLastSource
+    ) {
+
+      const swapIndex =
+        order.findIndex(
+          (entry) =>
+
+            entry.track.src !==
+              previousLastSource
         );
 
       if (
-        previousSource &&
-        deck.length > 1 &&
-        deck[0].src ===
-          previousSource
+        swapIndex > 0
       ) {
 
         [
-          deck[0],
-          deck[1]
+          order[0],
+          order[swapIndex]
         ] = [
-          deck[1],
-          deck[0]
+          order[swapIndex],
+          order[0]
         ];
 
       }
 
-      deck.forEach(
-        (stationId) => {
-
-          queue.push(
-            stationId
-          );
-
-        }
-      );
-
-      previousSource =
-        deck[
-          deck.length - 1
-        ].src;
-
-      deckNumber +=
-        1;
-
     }
 
-    return queue.slice(
-      0,
-      count
-    );
+    order.forEach(
+      (
+        entry,
+        songIndex
+      ) => {
 
-  }
+        program.push({
 
+          type:
+            "music",
 
-  function buildLiveStationProgram() {
-
-    const lobbyTracks =
-      channelConfig[
-        LIVE_STATION_CHANNEL
-      ].tracks.map(
-        (track, index) => ({
-
-          track,
+          track:
+            entry.track,
 
           playlistIndex:
-            index
+            entry.playlistIndex,
 
-        })
-      );
+          duration:
+            getRequiredDuration(
+              entry.track
+            )
 
-    const idsPerRound =
-      Math.floor(
-        lobbyTracks.length /
-        LIVE_STATION_SONGS_PER_ID
-      );
-
-    const idQueue =
-      buildStationIdQueue(
-        idsPerRound *
-        LIVE_STATION_ROUNDS
-      );
-
-    const program =
-      [];
-
-    let stationIdIndex =
-      0;
-
-    let previousLastSource =
-      "";
-
-    for (
-      let round = 0;
-
-      round <
-      LIVE_STATION_ROUNDS;
-
-      round += 1
-    ) {
-
-      const order =
-        seededShuffle(
-          lobbyTracks,
-          `AVJ-JAZZ-ROUND-${round}`
-        );
-
-      if (
-        previousLastSource &&
-        order.length > 1 &&
-        order[0].track.src ===
-          previousLastSource
-      ) {
-
-        const swapIndex =
-          order.findIndex(
-            (entry) =>
-
-              entry.track.src !==
-              previousLastSource
-          );
+        });
 
         if (
-          swapIndex > 0
+          (songIndex + 1) %
+            LIVE_STATION_SONGS_PER_ID ===
+            0 &&
+          stationIdIndex <
+            idQueue.length
         ) {
 
-          [
-            order[0],
-            order[swapIndex]
-          ] = [
-            order[swapIndex],
-            order[0]
-          ];
-
-        }
-
-      }
-
-
-      order.forEach(
-        (
-          entry,
-          songIndex
-        ) => {
+          const stationId =
+            idQueue[
+              stationIdIndex
+            ];
 
           program.push({
 
             type:
-              "music",
+              "id",
 
             track:
-              entry.track,
+              stationId,
 
             playlistIndex:
-              entry.playlistIndex,
+              null,
 
             duration:
               getRequiredDuration(
-                entry.track
+                stationId
               )
 
           });
 
-
-          if (
-            (songIndex + 1) %
-              LIVE_STATION_SONGS_PER_ID ===
-              0 &&
-            stationIdIndex <
-              idQueue.length
-          ) {
-
-            const stationId =
-              idQueue[
-                stationIdIndex
-              ];
-
-            program.push({
-
-              type:
-                "id",
-
-              track:
-                stationId,
-
-              playlistIndex:
-                null,
-
-              duration:
-                getRequiredDuration(
-                  stationId
-                )
-
-            });
-
-            stationIdIndex +=
-              1;
-
-          }
+          stationIdIndex +=
+            1;
 
         }
-      );
-
-      previousLastSource =
-        order[
-          order.length - 1
-        ].track.src;
-
-    }
-
-
-    let cursor =
-      0;
-
-    program.forEach(
-      (item) => {
-
-        item.start =
-          cursor;
-
-        item.end =
-          cursor +
-          item.duration;
-
-        cursor =
-          item.end;
 
       }
     );
 
-    liveStationProgram =
-      program;
-
-    liveStationDuration =
-      cursor;
+    previousLastSource =
+      order[
+        order.length - 1
+      ].track.src;
 
   }
 
+  let cursor =
+    0;
 
-  function getLiveStationPosition(
-    referenceMs =
-      Date.now()
+  program.forEach(
+    (item) => {
+
+      item.start =
+        cursor;
+
+      item.end =
+        cursor +
+        item.duration;
+
+      cursor =
+        item.end;
+
+    }
+  );
+
+  liveStationPrograms[
+    channel
+  ] = program;
+
+  liveStationDurations[
+    channel
+  ] = cursor;
+
+  currentLiveProgramIndexes[
+    channel
+  ] = -1;
+
+}
+
+
+function getLiveStationPosition(
+  channel,
+  referenceMs =
+    Date.now()
+) {
+
+  if (
+    !isProgrammedStation(
+      channel
+    )
   ) {
 
-    if (
-      !liveStationProgram.length ||
-      liveStationDuration <= 0
-    ) {
-
-      return null;
-
-    }
-
-    const elapsedSeconds =
-      (
-        referenceMs -
-        LIVE_STATION_EPOCH_MS
-      ) /
-      1000;
-
-    const stationSecond =
-      (
-        (
-          elapsedSeconds %
-          liveStationDuration
-        ) +
-        liveStationDuration
-      ) %
-      liveStationDuration;
-
-    for (
-      let index = 0;
-
-      index <
-      liveStationProgram.length;
-
-      index += 1
-    ) {
-
-      const item =
-        liveStationProgram[
-          index
-        ];
-
-      if (
-        stationSecond <
-        item.end
-      ) {
-
-        return {
-
-          item,
-
-          offset:
-            stationSecond -
-            item.start
-
-        };
-
-      }
-
-    }
-
-    return {
-
-      item:
-        liveStationProgram[0],
-
-      offset:
-        0
-
-    };
+    return null;
 
   }
+
+  const program =
+    liveStationPrograms[
+      channel
+    ] || [];
+
+  const duration =
+    liveStationDurations[
+      channel
+    ] || 0;
+
+  if (
+    !program.length ||
+    duration <= 0
+  ) {
+
+    return null;
+
+  }
+
+  const elapsedSeconds =
+    (
+      referenceMs -
+      LIVE_STATION_EPOCH_MS
+    ) /
+    1000;
+
+  const stationSecond =
+    (
+      (
+        elapsedSeconds %
+        duration
+      ) +
+      duration
+    ) %
+    duration;
+
+  for (
+    let index = 0;
+
+    index <
+      program.length;
+
+    index += 1
+  ) {
+
+    const item =
+      program[
+        index
+      ];
+
+    if (
+      stationSecond <
+      item.end
+    ) {
+
+      return {
+
+        item,
+
+        offset:
+          stationSecond -
+          item.start,
+
+        programIndex:
+          index
+
+      };
+
+    }
+
+  }
+
+  return {
+
+    item:
+      program[0],
+
+    offset:
+      0,
+
+    programIndex:
+      0
+
+  };
+
+}
 
 
   function seekLiveAudio(
@@ -3221,150 +3377,183 @@ async function loadStationIdsFromApi() {
   }
 
 
-  async function syncToLiveStation(
-    autoplay = false,
-    leadMilliseconds = 0
+async function syncToLiveStation(
+  autoplay = false,
+  leadMilliseconds = 0
+) {
+
+  if (
+    !isProgrammedStation(
+      activeChannel
+    ) ||
+    !audio
   ) {
 
-    if (
-      activeChannel !==
-        LIVE_STATION_CHANNEL ||
-      !audio
-    ) {
-
-      return;
-
-    }
-
-    const position =
-      getLiveStationPosition(
-        Date.now() +
-        leadMilliseconds
-      );
-
-    if (
-      !position
-    ) {
-
-      return;
-
-    }
-
-    const item =
-      position.item;
-     
-    const liveProgramIndex =
-      liveStationProgram.indexOf(
-        item
-      );
-
-    if (
-      liveProgramIndex >= 0
-    ) {
-
-      currentLiveProgramIndex =
-        liveProgramIndex;
-
-    }
-    const currentSource =
-      audio.getAttribute(
-        "src"
-      ) ||
-      "";
-
-    const sourceChanged =
-      currentSource !==
-      item.track.src;
-
-    if (
-      sourceChanged
-    ) {
-
-      window.setRadioTrack(
-        item.track
-      );
-
-    }
-
-    if (
-      item.type ===
-        "music" &&
-      Number.isInteger(
-        item.playlistIndex
-      )
-    ) {
-
-      currentTrackIndex =
-        item.playlistIndex;
-
-    }
-
-    if (
-      sourceChanged ||
-      Math.abs(
-        audio.currentTime -
-        position.offset
-      ) >
-        LIVE_STATION_DRIFT_TOLERANCE
-    ) {
-
-      await seekLiveAudio(
-        position.offset
-      );
-
-    }
-
-    setMainstreamState(
-      true
-    );
-
-    if (
-      autoplay
-    ) {
-
-      await resumeAudioContext();
-
-      try {
-
-        await audio.play();
-
-      } catch (error) {
-
-        console.error(
-          "AV Junki Radio live playback error:",
-          error
-        );
-
-        setStatus(
-          "Press Listen to join the live station."
-        );
-
-      }
-
-    }
+    return;
 
   }
 
+  const channel =
+    activeChannel;
 
-  async function initializeLiveStation() {
+  const position =
+    getLiveStationPosition(
+      channel,
+      Date.now() +
+        leadMilliseconds
+    );
 
-  await Promise.all([
-    loadStationIdsFromApi(), loadMusicFromApi(), loadImageAdsFromApi(), loadVideosFromApi()
-  ]);
+  if (
+    !position
+  ) {
 
-  buildLiveStationProgram();
+    return;
 
-  // The page can finish loading before the API responds. Show the fetched
-  // playlist without interrupting a song the listener has already started.
-  if (activeChannel === LIVE_STATION_CHANNEL && audio?.paused) {
-    syncToLiveStation(false);
-  } else if (activeChannel !== LIVE_STATION_CHANNEL) {
-    playlist = channelConfig[activeChannel].tracks;
-    if (playlist.length && !hasAudioSource()) loadTrack(0, false);
+  }
+
+  const item =
+    position.item;
+
+  currentLiveProgramIndexes[
+    channel
+  ] =
+    position.programIndex;
+
+  const currentSource =
+    audio.getAttribute(
+      "src"
+    ) ||
+    "";
+
+  const sourceChanged =
+    currentSource !==
+    item.track.src;
+
+  if (
+    sourceChanged
+  ) {
+
+    window.setRadioTrack(
+      item.track
+    );
+
+  }
+
+  if (
+    item.type ===
+      "music" &&
+    Number.isInteger(
+      item.playlistIndex
+    )
+  ) {
+
+    currentTrackIndex =
+      item.playlistIndex;
+
+  }
+
+  if (
+    sourceChanged ||
+    Math.abs(
+      audio.currentTime -
+      position.offset
+    ) >
+      LIVE_STATION_DRIFT_TOLERANCE
+  ) {
+
+    await seekLiveAudio(
+      position.offset
+    );
+
+  }
+
+  if (
+    activeChannel !==
+      channel
+  ) {
+
+    return;
+
+  }
+
+  setMainstreamState(
+    true
+  );
+
+  if (
+    autoplay
+  ) {
+
+    await resumeAudioContext();
+
+    if (
+      activeChannel !==
+        channel
+    ) {
+
+      return;
+
+    }
+
+    try {
+
+      await audio.play();
+
+    } catch (error) {
+
+      console.error(
+        "AV Junki Radio live playback error:",
+        error
+      );
+
+      setStatus(
+        "Press Listen to join the station."
+      );
+
+    }
+
   }
 
 }
 
+async function initializeLiveStation() {
+
+  await Promise.all([
+    loadStationIdsFromApi(),
+    loadMusicFromApi(),
+    loadImageAdsFromApi(),
+    loadVideosFromApi()
+  ]);
+
+  PROGRAMMED_STATION_CHANNELS.forEach(
+    (channel) => {
+
+      buildLiveStationProgram(
+        channel
+      );
+
+    }
+  );
+
+  playlist =
+    channelConfig[
+      activeChannel
+    ].tracks;
+
+  if (
+    isProgrammedStation(
+      activeChannel
+    ) &&
+    audio?.paused
+  ) {
+
+    syncToLiveStation(
+      false
+    );
+
+  }
+
+}
 initializeLiveStation();
 
 window.setInterval(() => {
@@ -3571,49 +3760,79 @@ window.setInterval(() => {
   }
 
 
-  function switchMusicChannel(
-    channel
+function switchMusicChannel(
+  channel
+) {
+
+  const config =
+    channelConfig[
+      channel
+    ];
+
+  if (
+    !config
   ) {
 
-    const config =
-      channelConfig[
-        channel
-      ];
+    return;
 
-    if (
-      !config
-    ) {
+  }
 
-      return;
-
-    }
-
-    const wasPlaying = videoPlaybackActive
+  const wasPlaying =
+    videoPlaybackActive
       ? resumeRadioAfterVideo
-      : Boolean(audio && !audio.paused && hasAudioSource());
+      : Boolean(
+          audio &&
+          !audio.paused &&
+          hasAudioSource()
+        );
 
-    if (videoPlaybackActive) finishFeatureVideo(false);
+  if (
+    videoPlaybackActive
+  ) {
 
-    activeChannel =
-      channel;
+    finishFeatureVideo(
+      false
+    );
 
-    hideImageAd();
+  }
 
-    playlist =
-      config.tracks;
+  activeChannel =
+    channel;
 
-    currentTrackIndex =
-      0;
+  hideImageAd();
 
-    genreSongCount = 0;
-    genreDropIndex = 0;
+  playlist =
+    config.tracks;
+
+  currentTrackIndex =
+    0;
+
+  genreSongCount =
+    0;
+
+  genreDropIndex =
+    0;
+
+  if (
+    playPause &&
+    !wasPlaying
+  ) {
 
     if (
-      playPause &&
-      channel !==
-        LIVE_STATION_CHANNEL &&
-      !wasPlaying
+      isProgrammedStation(
+        channel
+      )
     ) {
+
+      playPause.textContent =
+        "LISTEN";
+
+      playPause.setAttribute(
+        "aria-label",
+        "Listen live"
+      );
+
+    } else {
 
       playPause.textContent =
         "▶";
@@ -3625,97 +3844,96 @@ window.setInterval(() => {
 
     }
 
-    if (
-      playPause &&
-      channel ===
-        LIVE_STATION_CHANNEL &&
-      !wasPlaying
-    ) {
+  }
 
-      playPause.textContent =
-        "LISTEN";
+  setHero(
+    config.hero
+  );
 
-      playPause.setAttribute(
-        "aria-label",
-        "Listen live"
-      );
+  setScreenSaver(
+    channel
+  );
 
-    }
+  updateFeatureVideoButton();
 
-    setHero(
-      config.hero
-    );
+  setActivePanel(
+    channel
+  );
 
-    setScreenSaver(channel);
+  if (
+    screenContent
+  ) {
 
-    updateFeatureVideoButton();
-
-    setActivePanel(
-      channel
-    );
-
-    if (
-      screenContent
-    ) {
-
-      screenContent
-        .dataset
-        .radioChannel =
-        channel;
-
-      screenContent
-        .dataset
-        .adGroup =
-        config.adGroup;
-
-    }
-
-    document
-      .documentElement
+    screenContent
       .dataset
       .radioChannel =
       channel;
 
+    screenContent
+      .dataset
+      .adGroup =
+      config.adGroup;
+
+  }
+
+  document
+    .documentElement
+    .dataset
+    .radioChannel =
+    channel;
+
+  if (
+    playlist.length
+  ) {
+
     if (
-      playlist.length
+      isProgrammedStation(
+        channel
+      )
     ) {
 
       if (
-        channel ===
-          LIVE_STATION_CHANNEL
+        !liveStationPrograms[
+          channel
+        ]?.length
       ) {
 
-        syncToLiveStation(
-          wasPlaying
-        );
-
-      } else {
-
-        loadTrack(
-          0,
-          wasPlaying
+        buildLiveStationProgram(
+          channel
         );
 
       }
 
+      syncToLiveStation(
+        wasPlaying
+      );
+
     } else {
 
-      resetPlayerDisplay(
-        channel
+      loadTrack(
+        0,
+        wasPlaying
       );
 
     }
 
-    applyPreset(
-      "music"
-    );
+  } else {
 
-    setStatus(
-      config.label
+    resetPlayerDisplay(
+      channel
     );
 
   }
 
+  applyPreset(
+    "music"
+  );
+
+  setStatus(
+    config.label
+  );
+
+}
 
   /* =========================================================
      DEFAULT SCREEN SAVER
@@ -4591,140 +4809,60 @@ window.setInterval(() => {
   }
 
 
-  function playNextTrack() {
+ function playNextTrack() {
 
   if (
-  activeChannel ===
-    LIVE_STATION_CHANNEL
-) {
-
-  if (
-    !liveStationProgram.length
-  ) {
-
-    return;
-
-  }
-
-  if (
-    currentLiveProgramIndex < 0
-  ) {
-
-    syncToLiveStation(
-      true
-    );
-
-    return;
-
-  }
-
-  currentLiveProgramIndex =
-    (
-      currentLiveProgramIndex +
-      1
-    ) %
-    liveStationProgram.length;
-
-  const nextLiveItem =
-    liveStationProgram[
-      currentLiveProgramIndex
-    ];
-
-  if (
-    nextLiveItem.type ===
-      "music" &&
-    Number.isInteger(
-      nextLiveItem.playlistIndex
+    isProgrammedStation(
+      activeChannel
     )
   ) {
 
-    currentTrackIndex =
-      nextLiveItem.playlistIndex;
+    const channel =
+      activeChannel;
 
-  }
+    let program =
+      liveStationPrograms[
+        channel
+      ] || [];
 
-   window.setRadioTrack(
-    nextLiveItem.track
-  );
+    if (
+      !program.length
+    ) {
 
-  const startNextLiveTrack =
-    async () => {
+      buildLiveStationProgram(
+        channel
+      );
 
-      try {
+      program =
+        liveStationPrograms[
+          channel
+        ] || [];
 
-        // Make absolutely sure the new track begins at its true start.
-        if (
-          Number.isFinite(audio.duration) &&
-          audio.currentTime !== 0
-        ) {
-
-          audio.currentTime = 0;
-
-        }
-
-        await resumeAudioContext();
-
-        await audio.play();
-
-      } catch (error) {
-
-        console.error(
-          "AV Junki Radio live advance error:",
-          error
-        );
-
-        setStatus(
-          "Press Listen to continue the station."
-        );
-
-      }
-
-    };
-
-  if (
-    audio.readyState >= 3
-  ) {
-
-    startNextLiveTrack();
-
-  } else {
-
-    audio.addEventListener(
-      "canplay",
-      startNextLiveTrack,
-      {
-        once: true
-      }
-    );
-
-  }
-
-  return;
-
-}
-
-    if (!currentTrackIsStationId) {
-      genreSongCount += 1;
-      const pool = stationIdsByPool[GENRE_POOLS[activeChannel]] || [];
-      if (genreSongCount >= LIVE_STATION_SONGS_PER_ID && pool.length) {
-        genreSongCount = 0;
-        const drop = pool[genreDropIndex++ % pool.length];
-        window.setRadioTrack(drop);
-        resumeAudioContext().then(() => audio.play()).catch((error) => {
-          console.warn("AV Junki Radio drop playback error:", error);
-          playNextTrack();
-        });
-        return;
-      }
     }
 
     if (
-      playlist.length <=
-      1
+      !program.length
     ) {
 
-      loadTrack(
-        0,
+      return;
+
+    }
+
+    const currentIndex =
+      currentLiveProgramIndexes[
+        channel
+      ];
+
+    if (
+      !Number.isInteger(
+        currentIndex
+      ) ||
+      currentIndex < 0 ||
+      currentIndex >=
+        program.length
+    ) {
+
+      syncToLiveStation(
         true
       );
 
@@ -4732,192 +4870,65 @@ window.setInterval(() => {
 
     }
 
-    let nextTrackIndex;
+    const nextIndex =
+      (
+        currentIndex + 1
+      ) %
+      program.length;
 
-    do {
+    currentLiveProgramIndexes[
+      channel
+    ] =
+      nextIndex;
 
-      nextTrackIndex =
-        Math.floor(
-          Math.random() *
-          playlist.length
-        );
+    const nextLiveItem =
+      program[
+        nextIndex
+      ];
 
-    } while (
-      nextTrackIndex ===
-      currentTrackIndex
+    if (
+      nextLiveItem.type ===
+        "music" &&
+      Number.isInteger(
+        nextLiveItem.playlistIndex
+      )
+    ) {
+
+      currentTrackIndex =
+        nextLiveItem.playlistIndex;
+
+    }
+
+    window.setRadioTrack(
+      nextLiveItem.track
     );
 
-    loadTrack(
-      nextTrackIndex,
-      true
-    );
-
-  }
-
-
-  if (
-    previousTrack
-  ) {
-
-    previousTrack
-      .addEventListener(
-        "click",
-        () => {
-
-          if (
-            activeChannel ===
-              LIVE_STATION_CHANNEL
-          ) {
-
-            syncToLiveStation(
-              true
-            );
-
-            setStatus(
-              "Live station — synced to now."
-            );
-
-            return;
-
-          }
-
-          loadTrack(
-            currentTrackIndex -
-            1,
-            true
-          );
-
-        }
-      );
-
-  }
-
-
-  if (
-    nextTrack
-  ) {
-
-    nextTrack
-      .addEventListener(
-        "click",
-        () => {
-
-          if (
-            activeChannel ===
-              LIVE_STATION_CHANNEL
-          ) {
-
-            syncToLiveStation(
-              true
-            );
-
-            setStatus(
-              "Live station — synced to now."
-            );
-
-            return;
-
-          }
-
-          playNextTrack();
-
-        }
-      );
-
-  }
-
-
-  /* =========================================================
-     PLAYER CONTROLS
-  ========================================================= */
-
-  if (
-    playPause &&
-    audio
-  ) {
-
-    playPause
-      .addEventListener(
-        "click",
+    resumeAudioContext()
+      .then(
         async () => {
 
-          if (videoPlaybackActive) {
-            await finishFeatureVideo(true);
-            return;
-          }
-
           if (
-            activeChannel ===
-              LIVE_STATION_CHANNEL
+            activeChannel !==
+              channel
           ) {
 
-            if (
-              !audio.paused
-            ) {
-
-              audio.pause();
-
-              setStatus(
-                "Live audio paused. Press Listen to rejoin now."
-              );
-
-              return;
-
-            }
-
-            await syncToLiveStation(
-              true
-            );
-
             return;
 
           }
-
-          if (
-            !hasAudioSource()
-          ) {
-
-            setMainstreamState(
-              false
-            );
-
-            setStatus(
-              "Mainstream is off air — stream source not connected yet."
-            );
-
-            return;
-
-          }
-
-          await resumeAudioContext();
 
           try {
 
-            if (
-              audio.paused
-            ) {
-
-              await audio.play();
-
-            } else {
-
-              audio.pause();
-
-            }
+            await audio.play();
 
           } catch (error) {
 
             console.error(
-              "AV Junki Radio playback error:",
+              "AV Junki Radio station advance error:",
               error
             );
 
-            setMainstreamState(
-              false
-            );
-
             setStatus(
-              "Unable to start the audio stream."
+              "Press Listen to continue the station."
             );
 
           }
@@ -4925,48 +4936,197 @@ window.setInterval(() => {
         }
       );
 
+    return;
 
-    audio.addEventListener(
-      "play",
-      () => {
+  }
 
-        playPause.textContent =
-          "❚❚";
 
-        playPause.setAttribute(
-          "aria-label",
-          activeChannel ===
-            LIVE_STATION_CHANNEL
-              ? "Pause live radio"
-              : "Pause"
+  if (
+    !currentTrackIsStationId
+  ) {
+
+    genreSongCount +=
+      1;
+
+    const pool =
+      stationIdsByPool[
+        GENRE_POOLS[
+          activeChannel
+        ]
+      ] || [];
+
+    if (
+      genreSongCount >=
+        LIVE_STATION_SONGS_PER_ID &&
+      pool.length
+    ) {
+
+      genreSongCount =
+        0;
+
+      const drop =
+        pool[
+          genreDropIndex++ %
+          pool.length
+        ];
+
+      window.setRadioTrack(
+        drop
+      );
+
+      resumeAudioContext()
+        .then(
+          () =>
+            audio.play()
+        )
+        .catch(
+          (error) => {
+
+            console.warn(
+              "AV Junki Radio drop playback error:",
+              error
+            );
+
+            playNextTrack();
+
+          }
         );
 
-        setMainstreamState(
+      return;
+
+    }
+
+  }
+
+
+  if (
+    playlist.length <=
+      1
+  ) {
+
+    loadTrack(
+      0,
+      true
+    );
+
+    return;
+
+  }
+
+  let nextTrackIndex;
+
+  do {
+
+    nextTrackIndex =
+      Math.floor(
+        Math.random() *
+        playlist.length
+      );
+
+  } while (
+    nextTrackIndex ===
+      currentTrackIndex
+  );
+
+  loadTrack(
+    nextTrackIndex,
+    true
+  );
+
+}
+
+if (
+  previousTrack
+) {
+
+  previousTrack
+    .addEventListener(
+      "click",
+      () => {
+
+        if (
+          isProgrammedStation(
+            activeChannel
+          )
+        ) {
+
+          syncToLiveStation(
+            true
+          );
+
+          setStatus(
+            "Station synced to now."
+          );
+
+          return;
+
+        }
+
+        loadTrack(
+          currentTrackIndex -
+          1,
           true
         );
 
       }
     );
 
+}
 
-    audio.addEventListener(
-      "pause",
+
+if (
+  nextTrack
+) {
+
+  nextTrack
+    .addEventListener(
+      "click",
       () => {
 
         if (
-          activeChannel ===
-            LIVE_STATION_CHANNEL
+          isProgrammedStation(
+            activeChannel
+          )
         ) {
 
-          playPause.textContent =
-            "LISTEN";
-
-          playPause.setAttribute(
-            "aria-label",
-            "Listen live"
+          syncToLiveStation(
+            true
           );
 
-          setMainstreamState(
+          setStatus(
+            "Station synced to now."
+          );
+
+          return;
+
+        }
+
+        playNextTrack();
+
+      }
+    );
+
+}
+
+  /* =========================================================
+     PLAYER CONTROLS
+  ========================================================= */
+
+if (
+  playPause &&
+  audio
+) {
+
+  playPause
+    .addEventListener(
+      "click",
+      async () => {
+
+        if (
+          videoPlaybackActive
+        ) {
+
+          await finishFeatureVideo(
             true
           );
 
@@ -4974,74 +5134,203 @@ window.setInterval(() => {
 
         }
 
-        playPause.textContent =
-          "▶";
-
-        playPause.setAttribute(
-          "aria-label",
-          "Play"
-        );
-
-        setMainstreamState(
-          false
-        );
-
-      }
-    );
-
-
-    audio.addEventListener(
-      "error",
-      () => {
-
-        setMainstreamState(
-          false
-        );
-
-      }
-    );
-
-  }
-
-
-  if (
-    mainstreamStatus
-  ) {
-
-    mainstreamStatus
-      .addEventListener(
-        "click",
-        () => {
+        if (
+          isProgrammedStation(
+            activeChannel
+          )
+        ) {
 
           if (
-            activeChannel ===
-              LIVE_STATION_CHANNEL
+            !audio.paused
           ) {
 
+            audio.pause();
+
             setStatus(
-              "Mainstream is on air."
+              "Station audio paused. Press Listen to rejoin now."
             );
 
             return;
 
           }
 
+          await syncToLiveStation(
+            true
+          );
+
+          return;
+
+        }
+
+        if (
+          !hasAudioSource()
+        ) {
+
+          setMainstreamState(
+            false
+          );
+
           setStatus(
-            audio &&
-            !audio.paused &&
-            hasAudioSource()
+            "Mainstream is off air — stream source not connected yet."
+          );
 
-              ? "Mainstream is on air."
+          return;
 
-              : "Mainstream is off air."
+        }
+
+        await resumeAudioContext();
+
+        try {
+
+          if (
+            audio.paused
+          ) {
+
+            await audio.play();
+
+          } else {
+
+            audio.pause();
+
+          }
+
+        } catch (error) {
+
+          console.error(
+            "AV Junki Radio playback error:",
+            error
+          );
+
+          setMainstreamState(
+            false
+          );
+
+          setStatus(
+            "Unable to start the audio stream."
           );
 
         }
+
+      }
+    );
+
+
+  audio.addEventListener(
+    "play",
+    () => {
+
+      playPause.textContent =
+        "❚❚";
+
+      playPause.setAttribute(
+        "aria-label",
+        isProgrammedStation(
+          activeChannel
+        )
+          ? "Pause live radio"
+          : "Pause"
       );
 
-  }
+      setMainstreamState(
+        true
+      );
+
+    }
+  );
 
 
+  audio.addEventListener(
+    "pause",
+    () => {
+
+      if (
+        isProgrammedStation(
+          activeChannel
+        )
+      ) {
+
+        playPause.textContent =
+          "LISTEN";
+
+        playPause.setAttribute(
+          "aria-label",
+          "Listen live"
+        );
+
+        setMainstreamState(
+          true
+        );
+
+        return;
+
+      }
+
+      playPause.textContent =
+        "▶";
+
+      playPause.setAttribute(
+        "aria-label",
+        "Play"
+      );
+
+      setMainstreamState(
+        false
+      );
+
+    }
+  );
+
+
+  audio.addEventListener(
+    "error",
+    () => {
+
+      setMainstreamState(
+        false
+      );
+
+    }
+  );
+
+}
+
+if (
+  mainstreamStatus
+) {
+
+  mainstreamStatus
+    .addEventListener(
+      "click",
+      () => {
+
+        if (
+          isProgrammedStation(
+            activeChannel
+          )
+        ) {
+
+          setStatus(
+            "Mainstream is on air."
+          );
+
+          return;
+
+        }
+
+        setStatus(
+          audio &&
+          !audio.paused &&
+          hasAudioSource()
+
+            ? "Mainstream is on air."
+
+            : "Mainstream is off air."
+        );
+
+      }
+    );
+
+}
   /* =========================================================
      CENTER SCREEN NAVIGATION
   ========================================================= */
@@ -5280,11 +5569,11 @@ window.setInterval(() => {
 
         audio.load();
 
-        setMainstreamState(
-          activeChannel ===
-            LIVE_STATION_CHANNEL
-        );
-
+setMainstreamState(
+  isProgrammedStation(
+    activeChannel
+  )
+);
       }
 
 
