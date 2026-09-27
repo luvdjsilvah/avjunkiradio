@@ -5631,7 +5631,146 @@ setMainstreamState(
 
   /* =========================================================
      AUDIO / VIDEO EVENTS
+     SMOOTH RADIO TRANSITIONS — ALL MUSIC CHANNELS
   ========================================================= */
+
+  const TRACK_END_FADE_SECONDS =
+    0.35;
+
+  const TRACK_START_FADE_SECONDS =
+    0.30;
+
+  let trackEndFadeStarted =
+    false;
+
+  let smoothTransitionPending =
+    false;
+
+
+  function rampRadioGain(
+    target,
+    seconds
+  ) {
+
+    if (
+      !audioGraphReady ||
+      !radioSourceGain ||
+      !audioContext
+    ) {
+
+      return;
+
+    }
+
+    const gain =
+      radioSourceGain.gain;
+
+    const now =
+      audioContext.currentTime;
+
+    if (
+      typeof gain.cancelAndHoldAtTime ===
+        "function"
+    ) {
+
+      gain.cancelAndHoldAtTime(
+        now
+      );
+
+    } else {
+
+      const currentValue =
+        gain.value;
+
+      gain.cancelScheduledValues(
+        now
+      );
+
+      gain.setValueAtTime(
+        currentValue,
+        now
+      );
+
+    }
+
+    gain.linearRampToValueAtTime(
+      target,
+      now +
+        Math.max(
+          0.01,
+          seconds
+        )
+    );
+
+  }
+
+
+  function startNextTrackFadeIn() {
+
+    if (
+      !audioGraphReady ||
+      !radioSourceGain ||
+      !audioContext
+    ) {
+
+      smoothTransitionPending =
+        false;
+
+      trackEndFadeStarted =
+        false;
+
+      return;
+
+    }
+
+    const gain =
+      radioSourceGain.gain;
+
+    const now =
+      audioContext.currentTime;
+
+    gain.cancelScheduledValues(
+      now
+    );
+
+    if (
+      smoothTransitionPending
+    ) {
+
+      gain.setValueAtTime(
+        0,
+        now
+      );
+
+      gain.linearRampToValueAtTime(
+        1,
+        now +
+          TRACK_START_FADE_SECONDS
+      );
+
+    } else {
+
+      gain.setValueAtTime(
+        gain.value,
+        now
+      );
+
+      gain.linearRampToValueAtTime(
+        1,
+        now +
+          0.08
+      );
+
+    }
+
+    smoothTransitionPending =
+      false;
+
+    trackEndFadeStarted =
+      false;
+
+  }
+
 
   if (
     audio
@@ -5642,6 +5781,14 @@ setMainstreamState(
       () => {
 
         showTrackVideo();
+
+        if (
+          !videoPlaybackActive
+        ) {
+
+          startNextTrackFadeIn();
+
+        }
 
       }
     );
@@ -5661,6 +5808,9 @@ setMainstreamState(
       "seeking",
       () => {
 
+        trackEndFadeStarted =
+          false;
+
         syncVideoToAudio(
           true
         );
@@ -5674,22 +5824,61 @@ setMainstreamState(
       () => {
 
         if (
-          videoSyncing
+          !videoSyncing
+        ) {
+
+          videoSyncing =
+            true;
+
+          syncVideoToAudio(
+            false
+          );
+
+          videoSyncing =
+            false;
+
+        }
+
+
+        if (
+          videoPlaybackActive ||
+          audio.paused ||
+          !isProgrammedStation(
+            activeChannel
+          ) ||
+          !Number.isFinite(
+            audio.duration
+          ) ||
+          audio.duration <= 0
         ) {
 
           return;
 
         }
 
-        videoSyncing =
-          true;
+        const remaining =
+          audio.duration -
+          audio.currentTime;
 
-        syncVideoToAudio(
-          false
-        );
+        if (
+          !trackEndFadeStarted &&
+          remaining > 0 &&
+          remaining <=
+            TRACK_END_FADE_SECONDS
+        ) {
 
-        videoSyncing =
-          false;
+          trackEndFadeStarted =
+            true;
+
+          rampRadioGain(
+            0,
+            Math.max(
+              0.05,
+              remaining
+            )
+          );
+
+        }
 
       }
     );
@@ -5699,6 +5888,12 @@ setMainstreamState(
       "ended",
       () => {
 
+        smoothTransitionPending =
+          true;
+
+        trackEndFadeStarted =
+          false;
+
         stopTrackVideo();
 
         playNextTrack();
@@ -5707,7 +5902,6 @@ setMainstreamState(
     );
 
   }
-
 
   /* =========================================================
      LEFT INFO — LIVE CLOCK / DATE
