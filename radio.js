@@ -3462,7 +3462,7 @@ async function syncToLiveStation(
   ) {
 
     await seekLiveAudio(
-      position.offset
+     0
     );
 
   }
