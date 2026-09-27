@@ -5634,11 +5634,24 @@ setMainstreamState(
      SMOOTH RADIO TRANSITIONS — ALL MUSIC CHANNELS
   ========================================================= */
 
-  const TRACK_END_FADE_SECONDS =
+  const DEFAULT_TRACK_END_FADE_SECONDS =
     0.35;
+
+  const HARDER_TRACK_END_FADE_SECONDS =
+    0.75;
 
   const TRACK_START_FADE_SECONDS =
     0.30;
+
+  function getTrackEndFadeSeconds() {
+    return (
+      activeChannel === "hip-hop" ||
+      activeChannel === "reggae" ||
+      activeChannel === "gospel"
+    )
+      ? HARDER_TRACK_END_FADE_SECONDS
+      : DEFAULT_TRACK_END_FADE_SECONDS;
+  }
 
   let trackEndFadeStarted =
     false;
@@ -5856,17 +5869,19 @@ setMainstreamState(
 
         }
 
-        const remaining =
+              const remaining =
           audio.duration -
           audio.currentTime;
+
+        const trackEndFadeSeconds =
+          getTrackEndFadeSeconds();
 
         if (
           !trackEndFadeStarted &&
           remaining > 0 &&
           remaining <=
-            TRACK_END_FADE_SECONDS
+            trackEndFadeSeconds
         ) {
-
           trackEndFadeStarted =
             true;
 
