@@ -95,7 +95,8 @@ async function initializeDatabase(db) {
   for (const [table, column, definition] of [
     ["music_library", "artwork_key", "TEXT NOT NULL DEFAULT ''"],
     ["station_drops", "artwork_key", "TEXT NOT NULL DEFAULT ''"],
-    ["station_drops", "pool", "TEXT NOT NULL DEFAULT 'jazz'"]
+    ["station_drops", "pool", "TEXT NOT NULL DEFAULT 'jazz'"],
+    ["station_drops", "genres", "TEXT NOT NULL DEFAULT ''"]
   ]) {
     const columns = await db.prepare(`PRAGMA table_info(${table})`).all();
     if (!(columns.results || []).some((entry) => entry.name === column)) {
@@ -138,6 +139,22 @@ async function initializeDatabase(db) {
   }
 }
 const MEDIA_POOLS = new Set(["jazz", "nightlife", "reggae", "gospel"]);
+const DROP_GENRES = new Set(["jazz", "hip-hop", "rnb", "house", "reggae", "gospel"]);
+const LEGACY_DROP_GENRES = {
+  jazz: ["jazz"], nightlife: ["hip-hop", "rnb", "house"],
+  reggae: ["reggae"], gospel: ["gospel"]
+};
+function validDropGenres(value) {
+  if (typeof value === "string") {
+    try { value = JSON.parse(value); } catch { return null; }
+  }
+  return Array.isArray(value) && value.length > 0 && value.length <= DROP_GENRES.size &&
+    new Set(value).size === value.length && value.every((genre) => DROP_GENRES.has(genre))
+    ? value : null;
+}
+function dropPool(genres) {
+  return ["hip-hop", "rnb", "house"].includes(genres[0]) ? "nightlife" : genres[0];
+}
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 2 * 1024 * 1024 * 1024;
@@ -290,18 +307,79 @@ async function handleMediaRoutes(request, env, pathname) {
     const [, resource, idText] = match;
     const data = await request.json().catch(() => null);
     const table = resource === "music" ? "music_library" : resource === "drops" ? "station_drops" : "image_ads";
-    const column = resource === "drops" ? "pool" : "enabled";
     const key = resource === "drops" ? "slot_key" : "id";
     const id = resource === "drops" ? decodeURIComponent(idText) : Number(idText);
     if (resource !== "drops" && !Number.isSafeInteger(id)) return mediaError("Invalid record ID.");
-    if (column === "pool" ? !MEDIA_POOLS.has(data?.pool) : !validEnabled(data?.enabled)) {
-      return mediaError(column === "pool" ? "Choose a valid genre pool." : "Choose an enabled status.");
+    if (resource === "drops") {
+      const genres = data?.genres === undefined && MEDIA_POOLS.has(data?.pool)
+        ? LEGACY_DROP_GENRES[data.pool] : validDropGenres(data?.genres);
+      if (!genres || data?.enabled !== undefined && !validEnabled(data.enabled)) {
+        return mediaError("Choose one or more valid station genres and an enabled status.");
+      }
+      const result = await db.prepare(`UPDATE station_drops SET genres = ?, pool = ?,
+        enabled = COALESCE(?, enabled), updated_at = CURRENT_TIMESTAMP WHERE slot_key = ?`)
+        .bind(JSON.stringify(genres), dropPool(genres),
+          data.enabled === undefined ? null : Number(data.enabled), id).run();
+      if (!result.meta?.changes) return mediaError("Media record not found.", 404);
+      return json({ ok: true, drop: await db.prepare("SELECT * FROM station_drops WHERE slot_key = ?")
+        .bind(id).first() });
     }
+    if (!validEnabled(data?.enabled)) return mediaError("Choose an enabled status.");
+    const column = "enabled";
     const result = await db.prepare(`UPDATE ${table} SET ${column} = ? WHERE ${key} = ?`)
-      .bind(column === "pool" ? data.pool : Number(data.enabled), id).run();
+      .bind(Number(data.enabled), id).run();
     if (!result.meta?.changes) return mediaError("Media record not found.", 404);
     const updated = await db.prepare(`SELECT * FROM ${table} WHERE ${key} = ?`).bind(id).first();
     return json({ ok: true, [resource === "image-ads" ? "ad" : resource === "drops" ? "drop" : "music"]: updated });
+  }
+  if (method === "POST" && pathname === "/api/drops") {
+    if (!bucket) return mediaError("R2 binding AUDIO_BUCKET is missing.", 500);
+    if (!request.headers.get("Content-Type")?.includes("multipart/form-data")) {
+      return mediaError("Upload must use multipart/form-data.");
+    }
+    const form = await request.formData();
+    const file = form.get("file");
+    const artwork = form.get("artwork");
+    const genres = validDropGenres(form.get("genres"));
+    const enabled = form.get("enabled");
+    const duration = Number(form.get("duration"));
+    const title = String(form.get("title") || "").trim().slice(0, 120);
+    const artist = String(form.get("artist") || "AV Junki Radio").trim().slice(0, 120);
+    if (!genres || !validEnabled(enabled) || !title || !artist ||
+        !Number.isFinite(duration) || duration <= 0 ||
+        !(await mp3File(file)) || artwork && !imageFile(artwork)) {
+      return mediaError("Supply a valid MP3, duration, title, station genres, enabled status, and optional image.");
+    }
+    const slot = `drop-${crypto.randomUUID()}`;
+    const filename = safeName(file.name);
+    const audioKey = `station-drops/${slot}/v1/${filename}`;
+    let artworkKey = "";
+    let insertedRecord = false;
+    try {
+      await bucket.put(audioKey, file.stream(), { httpMetadata: { contentType: "audio/mpeg" } });
+      if (artwork) {
+        artworkKey = await storeImage(bucket, artwork, "images/drops");
+        if (!artworkKey) {
+          await bucket.delete(audioKey);
+          return mediaError("Artwork content does not match its file type.");
+        }
+      }
+      const inserted = await db.prepare(`INSERT INTO station_drops
+        (slot_key, title, artist, original_filename, source_path, r2_key, artwork_key,
+          pool, genres, duration_seconds, enabled)
+        VALUES (?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?)`)
+        .bind(slot, title, artist, filename, audioKey, artworkKey,
+          dropPool(genres), JSON.stringify(genres), duration, Number(enabled)).run();
+      insertedRecord = true;
+      const drop = await db.prepare("SELECT * FROM station_drops WHERE id = ?")
+        .bind(inserted.meta.last_row_id).first();
+      return json({ ok: true, drop }, 201);
+    } catch (error) {
+      if (!insertedRecord) {
+        await Promise.allSettled([bucket.delete(audioKey), artworkKey && bucket.delete(artworkKey)]);
+      }
+      throw error;
+    }
   }
   if (method === "POST" && pathname === "/api/image-ads/upload") {
     if (!bucket) return mediaError("R2 binding AUDIO_BUCKET is missing.", 500);
@@ -475,6 +553,7 @@ export default {
                 r2_key,
                 artwork_key,
                 pool,
+                genres,
                 duration_seconds,
                 enabled,
                 version,
@@ -514,6 +593,7 @@ export default {
                 r2_key,
                 artwork_key,
                 pool,
+                genres,
                 duration_seconds,
                 enabled,
                 version,
@@ -573,6 +653,7 @@ export default {
                 r2_key,
                 artwork_key,
                 pool,
+                genres,
                 duration_seconds,
                 enabled,
                 version,
@@ -610,9 +691,15 @@ export default {
         const durationValue =
           formData.get("duration");
         const pool = String(formData.get("pool") || existingDrop.pool || "jazz");
+        const genres = formData.has("genres")
+          ? validDropGenres(formData.get("genres"))
+          : formData.has("pool") ? LEGACY_DROP_GENRES[pool]
+            : validDropGenres(existingDrop.genres) || LEGACY_DROP_GENRES[existingDrop.pool];
+        const enabled = formData.get("enabled");
         const artwork = formData.get("artwork");
-        if (!MEDIA_POOLS.has(pool) || artwork && !imageFile(artwork) || !(await mp3File(file))) {
-          return mediaError("Supply a valid MP3, optional image, and genre pool.");
+        if (!genres || enabled !== null && !validEnabled(enabled) ||
+            artwork && !imageFile(artwork) || !(await mp3File(file))) {
+          return mediaError("Supply a valid MP3, optional image, and station genres.");
         }
         if (
           !file ||
@@ -696,6 +783,8 @@ export default {
               r2_key = ?,
               artwork_key = ?,
               pool = ?,
+              genres = ?,
+              enabled = COALESCE(?, enabled),
               duration_seconds = ?,
               version = ?,
               updated_at = CURRENT_TIMESTAMP
@@ -705,7 +794,9 @@ export default {
             safeFilename,
             r2Key,
             artworkKey,
-            pool,
+            dropPool(genres),
+            JSON.stringify(genres),
+            enabled === null ? null : Number(enabled),
             duration,
             nextVersion,
             slot
@@ -723,6 +814,7 @@ export default {
                 r2_key,
                 artwork_key,
                 pool,
+                genres,
                 duration_seconds,
                 enabled,
                 version,

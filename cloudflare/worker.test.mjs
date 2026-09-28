@@ -202,3 +202,74 @@ test("admin MP3, drop, image ad and video workflows", async () => {
   await body(await request(`/api/videos/${completed.video.id}/thumbnail`, authorized("POST", thumbForm)));
   assert.equal((await request(`/api/videos/${completed.video.id}/thumbnail`)).status, 200);
 });
+
+test("new drop upload, artwork, genre assignment, publishing and playback", async () => {
+  const env = { DB: database(), AUDIO_BUCKET: bucket(), ADMIN_API_TOKEN: "local-test-token" };
+  const request = (path, options = {}) => worker.fetch(new Request(`https://station.example${path}`, options), env);
+  const authorized = (method, body, headers = {}) => ({
+    method, body, headers: { Authorization: "Bearer local-test-token", ...headers }
+  });
+  const newDrop = () => {
+    const form = new FormData();
+    form.set("file", mp3);
+    form.set("artwork", artwork);
+    form.set("title", "New evening ID");
+    form.set("artist", "DJ Silvah");
+    form.set("duration", "8.5");
+    form.set("genres", JSON.stringify(["hip-hop", "house"]));
+    form.set("enabled", "0");
+    return form;
+  };
+
+  assert.equal((await request("/api/drops", { method: "POST", body: newDrop() })).status, 401);
+  const invalid = newDrop();
+  invalid.set("genres", JSON.stringify(["jazz", "not-a-station"]));
+  assert.equal((await request("/api/drops", authorized("POST", invalid))).status, 400);
+  const invalidFile = newDrop();
+  invalidFile.set("file", new File(["not an mp3"], "fake.mp3", { type: "audio/mpeg" }));
+  assert.equal((await request("/api/drops", authorized("POST", invalidFile))).status, 400);
+  assert.equal((await request("/api/health").then((res) => res.json())).dropCount, 8);
+
+  const response = await request("/api/drops", authorized("POST", newDrop()));
+  assert.equal(response.status, 201);
+  const { drop } = await response.json();
+  assert.match(drop.slot_key, /^drop-[a-f\d-]+$/);
+  assert.deepEqual(JSON.parse(drop.genres), ["hip-hop", "house"]);
+  assert.equal(drop.pool, "nightlife");
+  assert.equal(drop.enabled, 0);
+  assert.equal(drop.title, "New evening ID");
+  assert.equal(drop.artist, "DJ Silvah");
+  assert.equal(drop.duration_seconds, 8.5);
+  assert.equal(env.AUDIO_BUCKET.entries.get(drop.artwork_key).type, "image/png");
+  assert.equal((await request(`/api/drops/${drop.slot_key}/artwork`)).status, 200);
+  assert.equal((await request(`/api/audio/${drop.slot_key}`)).status, 404);
+  const list = await request("/api/drops").then((res) => res.json());
+  assert.equal(list.drops.length, 9);
+  assert.deepEqual(JSON.parse(list.drops.at(-1).genres), ["hip-hop", "house"]);
+
+  const patch = (genres, enabled) => request(`/api/drops/${drop.slot_key}`,
+    authorized("PATCH", JSON.stringify({ genres, enabled }), { "Content-Type": "application/json" }));
+  assert.equal((await patch([], 1)).status, 400);
+  const updated = await patch(["jazz", "gospel"], 1).then((res) => res.json());
+  assert.deepEqual(JSON.parse(updated.drop.genres), ["jazz", "gospel"]);
+  assert.equal(updated.drop.enabled, 1);
+  const audio = await request(`/api/audio/${drop.slot_key}`, { headers: { Range: "bytes=0-2" } });
+  assert.equal(audio.status, 206);
+  assert.deepEqual(new Uint8Array(await audio.arrayBuffer()), Uint8Array.from([73, 68, 51]));
+  await patch(["jazz", "gospel"], 0);
+  assert.equal((await request(`/api/audio/${drop.slot_key}`)).status, 404);
+
+  const replacement = new FormData();
+  replacement.set("file", mp3);
+  replacement.set("duration", "9");
+  replacement.set("genres", JSON.stringify(["rnb"]));
+  replacement.set("enabled", "1");
+  const replaced = await request(`/api/drops/${drop.slot_key}/upload`, authorized("POST", replacement))
+    .then((res) => res.json());
+  assert.deepEqual(JSON.parse(replaced.drop.genres), ["rnb"]);
+  assert.equal(replaced.drop.enabled, 1);
+  assert.equal(replaced.drop.version, 2);
+  assert.equal((await request(`/api/audio/${drop.slot_key}`)).status, 200);
+  assert.equal((await request("/api/music").then((res) => res.json())).music.length, 0);
+  assert.equal((await request("/api/image-ads").then((res) => res.json())).ads.length, 0);
+});

@@ -5,6 +5,30 @@
 ========================================================= */
 "use strict";
 
+function stationGenresForDrop(drop) {
+  const legacy = {
+    jazz: ["jazz"], nightlife: ["hip-hop", "rnb", "house"],
+    reggae: ["reggae"], gospel: ["gospel"]
+  };
+  let genres = drop.genres;
+  if (typeof genres === "string" && genres) {
+    try { genres = JSON.parse(genres); } catch { genres = null; }
+  }
+  return Array.isArray(genres) && genres.length
+    ? genres : legacy[drop.pool] || ["jazz"];
+}
+
+function routeStationIds(drops) {
+  const genreForChannel = {
+    lobby: "jazz", "hip-hop": "hip-hop", rnb: "rnb",
+    house: "house", reggae: "reggae", gospel: "gospel"
+  };
+  return Object.fromEntries(Object.entries(genreForChannel).map(
+    ([channel, genre]) => [channel, drops.filter((drop) =>
+      stationGenresForDrop(drop).includes(genre))]
+  ));
+}
+
 document.addEventListener("DOMContentLoaded", () => {
 
   /* =========================================================
@@ -2421,12 +2445,16 @@ let stationIds = [
 
   ];
 
-  let stationIdsByPool = {
-    jazz: stationIds,
-    nightlife: [],
+  let stationIdsByGenre = {
+    lobby: stationIds,
+    "hip-hop": [],
+    rnb: [],
+    house: [],
     reggae: [],
     gospel: []
   };
+  let stationDropFingerprint = "";
+  let stationProgramsInitialized = false;
 
   let genreSongCount = 0;
   let genreDropIndex = 0;
@@ -2605,7 +2633,9 @@ async function loadStationIdsFromApi() {
               preset: "drop",
 
               isStationId: true,
-              pool: drop.pool || "jazz"
+              pool: drop.pool || "jazz",
+              genres: drop.genres,
+              version: drop.version
 
             };
 
@@ -2616,21 +2646,17 @@ async function loadStationIdsFromApi() {
             Boolean(track.src)
         );
 
-    if (
-      apiStationIds.length === 0
-    ) {
-
-      return false;
-
+    const fingerprint = JSON.stringify(apiStationIds.map((drop) =>
+      [drop.src, drop.title, drop.artist, drop.artwork, drop.pool,
+        stationGenresForDrop(drop), drop.version, liveDurationSeconds[drop.src]]
+    ));
+    if (fingerprint === stationDropFingerprint) return true;
+    stationIdsByGenre = routeStationIds(apiStationIds);
+    stationIds = stationIdsByGenre.lobby;
+    stationDropFingerprint = fingerprint;
+    if (stationProgramsInitialized) {
+      PROGRAMMED_STATION_CHANNELS.forEach((channel) => buildLiveStationProgram(channel));
     }
-
-    stationIdsByPool = {
-      jazz: apiStationIds.filter((drop) => drop.pool === "jazz"),
-      nightlife: apiStationIds.filter((drop) => drop.pool === "nightlife"),
-      reggae: apiStationIds.filter((drop) => drop.pool === "reggae"),
-      gospel: apiStationIds.filter((drop) => drop.pool === "gospel")
-    };
-    if (stationIdsByPool.jazz.length) stationIds = stationIdsByPool.jazz;
 
     return true;
 
@@ -2986,14 +3012,9 @@ function buildLiveStationProgram(
 
   }
 
-  const poolName =
-    GENRE_POOLS[
-      channel
-    ];
-
   const stationIdsForChannel =
-    stationIdsByPool[
-      poolName
+    stationIdsByGenre[
+      channel
     ] || [];
 
   const idsPerRound =
@@ -3534,6 +3555,7 @@ async function initializeLiveStation() {
 
     }
   );
+  stationProgramsInitialized = true;
 
   playlist =
     channelConfig[
@@ -4949,10 +4971,8 @@ function switchMusicChannel(
       1;
 
     const pool =
-      stationIdsByPool[
-        GENRE_POOLS[
-          activeChannel
-        ]
+      stationIdsByGenre[
+        activeChannel
       ] || [];
 
     if (
