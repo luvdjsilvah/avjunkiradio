@@ -1,0 +1,66 @@
+name: Deploy AV Junki Radio Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - cloudflare/worker.js
+      - .github/workflows/deploy-worker.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: av-junki-radio-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Test Worker
+        run: node --test cloudflare/worker.test.mjs
+
+      - name: Replace Worker code
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          : "${CF_ACCOUNT_ID:?CLOUDFLARE_ACCOUNT_ID is missing}"
+          : "${CF_API_TOKEN:?CLOUDFLARE_API_TOKEN is missing}"
+
+          # The content endpoint preserves the live DB, AUDIO_BUCKET and
+          # ADMIN_API_TOKEN bindings. Do not replace it with an unconfigured
+          # Wrangler deploy, which could remove those bindings.
+          response_file=$(mktemp)
+          trap 'rm -f "$response_file"' EXIT
+          curl --silent --show-error --fail-with-body \
+            --request PUT \
+            --url "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/av-junki-radio-admin-api/content" \
+            --header "Authorization: Bearer ${CF_API_TOKEN}" \
+            --form 'metadata={"main_module":"worker.js"};type=application/json' \
+            --form 'worker.js=@cloudflare/worker.js;type=application/javascript+module' \
+            --output "$response_file"
+          if ! jq -e '.success == true' "$response_file" >/dev/null; then
+            jq '{errors, messages}' "$response_file"
+            exit 1
+          fi
+
+      - name: Check live bindings
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if curl --silent --show-error --fail \
+              'https://av-junki-radio-admin-api.luvdjsilvah.workers.dev/api/health' \
+              | jq -e '.ok == true and .database == "connected" and .audioBucket == "connected"' >/dev/null; then
+              exit 0
+            fi
+            sleep 3
+          done
+          echo 'Worker health check failed after deployment.' >&2
+          exit 1
