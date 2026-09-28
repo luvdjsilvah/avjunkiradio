@@ -13,7 +13,7 @@ used by `radio.js` and `admin/index.html`, and additive D1 schema updates.
 2. Retain the existing `DB` D1 binding and `AUDIO_BUCKET` R2 binding. Videos,
    images, MP3s, and drops all use that R2 bucket; no new bucket is required.
 3. Replace the current deployed Worker with `worker.js`. On first request it
-   adds `artwork_key` to existing music and drop tables, `pool` to drop records,
+   adds `artwork_key` to existing music and drop tables, `pool` and `stations` to drop records,
    and creates image ad, video, and pending-upload tables. Existing records and
    drop slot defaults are preserved.
 4. Publish `admin/index.html` and `radio.js` from the same branch once the
@@ -32,7 +32,7 @@ and R2 stream responses support byte ranges for seeking and video playback.
 | Read | Write |
 | --- | --- |
 | `GET /api/music`, `GET /api/music/:id/audio`, `GET /api/music/:id/artwork` | `POST /api/music/upload` (MP3, genre, duration, enabled, optional artwork), `POST /api/music/:id/artwork`, `PATCH /api/music/:id` (enabled) |
-| `GET /api/drops`, `GET /api/audio/:slot`, `GET /api/drops/:slot/artwork` | `POST /api/drops/:slot/upload` (MP3, duration, pool, optional artwork), `POST /api/drops/:slot/artwork`, `PATCH /api/drops/:slot` (pool) |
+| `GET /api/drops`, `GET /api/audio/:slot`, `GET /api/drops/:slot/artwork` | `POST /api/drops/upload` (new MP3, title, artist, duration, stations, enabled, optional artwork), `POST /api/drops/:slot/upload` (replace MP3), `POST /api/drops/:slot/artwork`, `PATCH /api/drops/:slot` (stations, enabled) |
 | `GET /api/image-ads`, `GET /api/image-ads/:id/image` | `POST /api/image-ads/upload` (image, title, pool, enabled), `PATCH /api/image-ads/:id` (enabled) |
 | `GET /api/videos`, `GET /api/videos/:id/stream`, `GET /api/videos/:id/thumbnail` | `POST /api/videos/uploads`, `PUT /api/videos/uploads/:id/parts/:number`, `POST /api/videos/uploads/:id/complete`, `POST /api/videos/:id/thumbnail` |
 
@@ -40,6 +40,11 @@ Pool values are `jazz`, `nightlife` (shared by Hip Hop, R&B, and House),
 `reggae`, and `gospel`. The video form takes one MP4 or WebM with embedded audio
 and splits its upload into 10 MiB R2 multipart requests. Pending uploads expire
 after 24 hours when next accessed. Thumbnail and artwork files are optional.
+
+New drops assign one or more station names: `jazz`, `hip-hop`, `rnb`, `house`,
+`reggae`, or `gospel`. Existing drops with an empty `stations` value continue to
+use their `pool`; `nightlife` maps to all three nightlife stations. Disabling a
+drop removes it from the public rotation and its public audio route.
 
 The radio's Web Audio graph applies EQ, compression, and limiting in the
 listener's browser. It is a listening-time chain; uploads are not permanently

@@ -115,6 +115,7 @@ test("upgrades the existing D1 music and drop tables without removing live track
   assert.equal(result.music[0].genre, "hip-hop");
   assert.equal(result.music[0].artwork_key, "");
   assert.equal(DB.sqlite.prepare("SELECT COUNT(*) AS total FROM station_drops").get().total, 8);
+  assert.equal(DB.sqlite.prepare("SELECT stations FROM station_drops WHERE slot_key = 'id-01'").get().stations, "");
   const stream = await worker.fetch(new Request("https://station.example/api/music/2/audio"), env);
   assert.equal(stream.status, 200);
 });
@@ -171,6 +172,36 @@ test("admin MP3, drop, image ad and video workflows", async () => {
   assert.equal((await request("/api/audio/id-01", { headers: { Range: "bytes=0-2" } })).status, 206);
   await body(await request("/api/drops/id-01", authorized("PATCH", JSON.stringify({ pool: "gospel" }),
     { "Content-Type": "application/json" })));
+
+  const newDropForm = new FormData();
+  newDropForm.set("file", mp3);
+  newDropForm.set("title", "Evening Station ID");
+  newDropForm.set("artist", "DJ Silvah");
+  newDropForm.set("duration", "8.5");
+  newDropForm.set("stations", JSON.stringify(["hip-hop", "gospel"]));
+  newDropForm.set("enabled", "0");
+  newDropForm.set("artwork", artwork);
+  assert.equal((await request("/api/drops/upload", { method: "POST", body: newDropForm })).status, 401);
+  const created = await body(await request("/api/drops/upload", authorized("POST", newDropForm)));
+  assert.match(created.drop.slot_key, /^drop-/);
+  assert.equal(created.drop.title, "Evening Station ID");
+  assert.equal(created.drop.enabled, 0);
+  assert.deepEqual(JSON.parse(created.drop.stations), ["hip-hop", "gospel"]);
+  assert.equal((await request(`/api/audio/${created.drop.slot_key}`)).status, 404);
+  const updatedDrop = await body(await request(`/api/drops/${created.drop.slot_key}`,
+    authorized("PATCH", JSON.stringify({ stations: ["jazz", "reggae"], enabled: 1 }),
+      { "Content-Type": "application/json" })));
+  assert.deepEqual(JSON.parse(updatedDrop.drop.stations), ["jazz", "reggae"]);
+  assert.equal((await request(`/api/audio/${created.drop.slot_key}`)).status, 200);
+  assert.equal((await request(`/api/drops/${created.drop.slot_key}/artwork`)).status, 200);
+  assert.equal((await body(await request("/api/drops"))).drops.length, 9);
+  const invalid = new FormData();
+  invalid.set("file", mp3);
+  invalid.set("title", "Invalid Station");
+  invalid.set("duration", "8");
+  invalid.set("stations", JSON.stringify(["gospel", "not-a-station"]));
+  invalid.set("enabled", "1");
+  assert.equal((await request("/api/drops/upload", authorized("POST", invalid))).status, 400);
 
   const adForm = new FormData();
   adForm.set("image", artwork);

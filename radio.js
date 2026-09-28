@@ -2421,9 +2421,11 @@ let stationIds = [
 
   ];
 
-  let stationIdsByPool = {
-    jazz: stationIds,
-    nightlife: [],
+  let stationIdsByChannel = {
+    lobby: stationIds,
+    "hip-hop": [],
+    rnb: [],
+    house: [],
     reggae: [],
     gospel: []
   };
@@ -2523,6 +2525,20 @@ let stationIds = [
 
   };
 
+function dropStationAssignments(drop) {
+  try {
+    const stations = Array.isArray(drop.stations) ? drop.stations : JSON.parse(drop.stations);
+    if (Array.isArray(stations) && stations.length) return stations;
+  } catch { /* Existing drops still use their shared pool. */ }
+  const legacy = {
+    jazz: ["jazz"],
+    nightlife: ["hip-hop", "rnb", "house"],
+    reggae: ["reggae"],
+    gospel: ["gospel"]
+  };
+  return legacy[drop.pool] || ["jazz"];
+}
+
 async function loadStationIdsFromApi() {
 
   try {
@@ -2605,7 +2621,7 @@ async function loadStationIdsFromApi() {
               preset: "drop",
 
               isStationId: true,
-              pool: drop.pool || "jazz"
+              stations: dropStationAssignments(drop)
 
             };
 
@@ -2624,13 +2640,15 @@ async function loadStationIdsFromApi() {
 
     }
 
-    stationIdsByPool = {
-      jazz: apiStationIds.filter((drop) => drop.pool === "jazz"),
-      nightlife: apiStationIds.filter((drop) => drop.pool === "nightlife"),
-      reggae: apiStationIds.filter((drop) => drop.pool === "reggae"),
-      gospel: apiStationIds.filter((drop) => drop.pool === "gospel")
+    stationIdsByChannel = {
+      lobby: apiStationIds.filter((drop) => drop.stations.includes("jazz")),
+      "hip-hop": apiStationIds.filter((drop) => drop.stations.includes("hip-hop")),
+      rnb: apiStationIds.filter((drop) => drop.stations.includes("rnb")),
+      house: apiStationIds.filter((drop) => drop.stations.includes("house")),
+      reggae: apiStationIds.filter((drop) => drop.stations.includes("reggae")),
+      gospel: apiStationIds.filter((drop) => drop.stations.includes("gospel"))
     };
-    if (stationIdsByPool.jazz.length) stationIds = stationIdsByPool.jazz;
+    if (stationIdsByChannel.lobby.length) stationIds = stationIdsByChannel.lobby;
 
     return true;
 
@@ -2986,14 +3004,9 @@ function buildLiveStationProgram(
 
   }
 
-  const poolName =
-    GENRE_POOLS[
-      channel
-    ];
-
   const stationIdsForChannel =
-    stationIdsByPool[
-      poolName
+    stationIdsByChannel[
+      channel
     ] || [];
 
   const idsPerRound =
@@ -4949,10 +4962,8 @@ function switchMusicChannel(
       1;
 
     const pool =
-      stationIdsByPool[
-        GENRE_POOLS[
-          activeChannel
-        ]
+      stationIdsByChannel[
+        activeChannel
       ] || [];
 
     if (

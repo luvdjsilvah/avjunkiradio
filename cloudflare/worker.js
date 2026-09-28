@@ -95,7 +95,8 @@ async function initializeDatabase(db) {
   for (const [table, column, definition] of [
     ["music_library", "artwork_key", "TEXT NOT NULL DEFAULT ''"],
     ["station_drops", "artwork_key", "TEXT NOT NULL DEFAULT ''"],
-    ["station_drops", "pool", "TEXT NOT NULL DEFAULT 'jazz'"]
+    ["station_drops", "pool", "TEXT NOT NULL DEFAULT 'jazz'"],
+    ["station_drops", "stations", "TEXT NOT NULL DEFAULT ''"]
   ]) {
     const columns = await db.prepare(`PRAGMA table_info(${table})`).all();
     if (!(columns.results || []).some((entry) => entry.name === column)) {
@@ -138,6 +139,17 @@ async function initializeDatabase(db) {
   }
 }
 const MEDIA_POOLS = new Set(["jazz", "nightlife", "reggae", "gospel"]);
+const DROP_STATIONS = new Set(["jazz", "hip-hop", "rnb", "house", "reggae", "gospel"]);
+
+function validStations(stations) {
+  return Array.isArray(stations) && stations.length > 0 && stations.length <= DROP_STATIONS.size &&
+    new Set(stations).size === stations.length && stations.every((station) => DROP_STATIONS.has(station));
+}
+
+function poolForStations(stations) {
+  const first = stations[0];
+  return first === "hip-hop" || first === "rnb" || first === "house" ? "nightlife" : first;
+}
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 2 * 1024 * 1024 * 1024;
@@ -245,6 +257,57 @@ async function handleMediaRoutes(request, env, pathname) {
       .bind(decodeURIComponent(match[1])).first();
     return mediaObject(request, bucket, drop?.artwork_key, "image/jpeg");
   }
+  if (method === "POST" && pathname === "/api/drops/upload") {
+    if (!bucket) return mediaError("R2 binding AUDIO_BUCKET is missing.", 500);
+    if (!(request.headers.get("Content-Type") || "").includes("multipart/form-data")) {
+      return mediaError("Upload must use multipart/form-data.");
+    }
+    const form = await request.formData();
+    const file = form.get("file");
+    const artwork = form.get("artwork");
+    const title = String(form.get("title") || "").trim();
+    const artist = String(form.get("artist") || "AV Junki Radio").trim();
+    const duration = Number(form.get("duration"));
+    const enabled = form.get("enabled");
+    let stations;
+    try { stations = JSON.parse(String(form.get("stations") || "")); } catch { stations = null; }
+    if (!title || title.length > 120 || !artist || artist.length > 120 ||
+        !Number.isFinite(duration) || duration <= 0 || duration > 24 * 60 * 60 ||
+        !validEnabled(enabled) || !validStations(stations) ||
+        artwork && !imageFile(artwork) || !(await mp3File(file))) {
+      return mediaError("Supply a title, valid MP3, station selection, duration, status, and optional image.");
+    }
+    const slot = `drop-${crypto.randomUUID()}`;
+    const filename = safeName(file.name);
+    const r2Key = mediaKey(`station-drops/${slot}`, filename);
+    let artworkKey = "";
+    try {
+      await bucket.put(r2Key, file.stream(), {
+        httpMetadata: { contentType: "audio/mpeg" },
+        customMetadata: { slot, version: "1", duration: String(duration) }
+      });
+      if (artwork) {
+        artworkKey = await storeImage(bucket, artwork, "images/drops");
+        if (!artworkKey) {
+          await bucket.delete(r2Key);
+          return mediaError("Artwork content does not match its file type.");
+        }
+      }
+      await db.prepare(`INSERT INTO station_drops
+        (slot_key, title, artist, original_filename, source_path, r2_key,
+         artwork_key, pool, stations, duration_seconds, enabled)
+        VALUES (?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?)`).bind(
+        slot, title, artist, filename, r2Key, artworkKey,
+        poolForStations(stations), JSON.stringify(stations), duration, Number(enabled)
+      ).run();
+    } catch (error) {
+      await bucket.delete(r2Key);
+      if (artworkKey) await bucket.delete(artworkKey);
+      throw error;
+    }
+    const drop = await db.prepare("SELECT * FROM station_drops WHERE slot_key = ?").bind(slot).first();
+    return json({ ok: true, drop }, 201);
+  }
   if (method === "GET" && pathname === "/api/image-ads") {
     const result = await db.prepare("SELECT id, title, pool, image_key, enabled, uploaded_at FROM image_ads ORDER BY id DESC").all();
     return json({ ok: true, ads: result.results || [] });
@@ -286,22 +349,47 @@ async function handleMediaRoutes(request, env, pathname) {
     const updated = await db.prepare(`SELECT * FROM ${section} WHERE ${condition} = ?`).bind(id).first();
     return json({ ok: true, [section === "music_library" ? "music" : section === "station_drops" ? "drop" : "video"]: updated });
   }
-  if (method === "PATCH" && (match = pathname.match(/^\/api\/(music|drops|image-ads)\/([^/]+)$/))) {
+  if (method === "PATCH" && (match = pathname.match(/^\/api\/drops\/([^/]+)$/))) {
+    const slot = decodeURIComponent(match[1]);
+    const data = await request.json().catch(() => null);
+    const existing = await db.prepare("SELECT * FROM station_drops WHERE slot_key = ?").bind(slot).first();
+    if (!existing) return mediaError("Drop not found.", 404);
+    if (!data || typeof data !== "object" ||
+        !Object.hasOwn(data, "stations") && !Object.hasOwn(data, "pool") && !Object.hasOwn(data, "enabled")) {
+      return mediaError("Choose stations or an enabled status.");
+    }
+    let stations = existing.stations;
+    let pool = existing.pool;
+    if (Object.hasOwn(data, "stations")) {
+      if (!validStations(data.stations)) return mediaError("Choose one or more valid stations.");
+      stations = JSON.stringify(data.stations);
+      pool = poolForStations(data.stations);
+    } else if (Object.hasOwn(data, "pool")) {
+      if (!MEDIA_POOLS.has(data.pool)) return mediaError("Choose a valid genre pool.");
+      pool = data.pool;
+      stations = ""; // Existing clients can continue to use their shared genre pool.
+    }
+    const enabled = Object.hasOwn(data, "enabled") ? data.enabled : existing.enabled;
+    if (!validEnabled(enabled)) return mediaError("Choose an enabled status.");
+    await db.prepare(`UPDATE station_drops SET stations = ?, pool = ?, enabled = ?,
+      updated_at = CURRENT_TIMESTAMP WHERE slot_key = ?`)
+      .bind(stations, pool, Number(enabled), slot).run();
+    const drop = await db.prepare("SELECT * FROM station_drops WHERE slot_key = ?").bind(slot).first();
+    return json({ ok: true, drop });
+  }
+  if (method === "PATCH" && (match = pathname.match(/^\/api\/(music|image-ads)\/([^/]+)$/))) {
     const [, resource, idText] = match;
     const data = await request.json().catch(() => null);
-    const table = resource === "music" ? "music_library" : resource === "drops" ? "station_drops" : "image_ads";
-    const column = resource === "drops" ? "pool" : "enabled";
-    const key = resource === "drops" ? "slot_key" : "id";
-    const id = resource === "drops" ? decodeURIComponent(idText) : Number(idText);
-    if (resource !== "drops" && !Number.isSafeInteger(id)) return mediaError("Invalid record ID.");
-    if (column === "pool" ? !MEDIA_POOLS.has(data?.pool) : !validEnabled(data?.enabled)) {
-      return mediaError(column === "pool" ? "Choose a valid genre pool." : "Choose an enabled status.");
-    }
+    const table = resource === "music" ? "music_library" : "image_ads";
+    const column = "enabled";
+    const key = "id";
+    const id = Number(idText);
+    if (!Number.isSafeInteger(id) || !validEnabled(data?.enabled)) return mediaError("Choose an enabled status.");
     const result = await db.prepare(`UPDATE ${table} SET ${column} = ? WHERE ${key} = ?`)
-      .bind(column === "pool" ? data.pool : Number(data.enabled), id).run();
+      .bind(Number(data.enabled), id).run();
     if (!result.meta?.changes) return mediaError("Media record not found.", 404);
     const updated = await db.prepare(`SELECT * FROM ${table} WHERE ${key} = ?`).bind(id).first();
-    return json({ ok: true, [resource === "image-ads" ? "ad" : resource === "drops" ? "drop" : "music"]: updated });
+    return json({ ok: true, [resource === "image-ads" ? "ad" : "music"]: updated });
   }
   if (method === "POST" && pathname === "/api/image-ads/upload") {
     if (!bucket) return mediaError("R2 binding AUDIO_BUCKET is missing.", 500);
@@ -475,6 +563,7 @@ export default {
                 r2_key,
                 artwork_key,
                 pool,
+                stations,
                 duration_seconds,
                 enabled,
                 version,
@@ -514,6 +603,7 @@ export default {
                 r2_key,
                 artwork_key,
                 pool,
+                stations,
                 duration_seconds,
                 enabled,
                 version,
@@ -573,6 +663,7 @@ export default {
                 r2_key,
                 artwork_key,
                 pool,
+                stations,
                 duration_seconds,
                 enabled,
                 version,
@@ -723,6 +814,7 @@ export default {
                 r2_key,
                 artwork_key,
                 pool,
+                stations,
                 duration_seconds,
                 enabled,
                 version,
