@@ -196,6 +196,21 @@
       border-radius: 8px;
     }
 
+    .genre-choices {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+      margin: 14px 0;
+      border: 1px solid #80614d;
+      border-radius: 8px;
+      padding: 12px;
+      color: #d5bda9;
+    }
+
+    .genre-choices label { display: flex; align-items: center; gap: 8px; }
+
+    #newDropPanel { margin-bottom: 20px; }
+
     .message {
       min-height: 18px;
       margin-top: 10px;
@@ -333,6 +348,38 @@
 
 <section class="admin-section active" id="section-drops">
   <h2 class="section-title">Station Drops</h2>
+  <div class="music-upload-panel" id="newDropPanel">
+    <h3>Upload New Drop</h3>
+    <label class="form-field" for="newDropTitle">Title
+      <input id="newDropTitle" type="text" maxlength="120" required>
+    </label>
+    <label class="form-field" for="newDropArtist">Artist / voice
+      <input id="newDropArtist" type="text" maxlength="120" value="AV Junki Radio">
+    </label>
+    <label class="button form-field" for="newDropFile">Choose MP3 Drop</label>
+    <input id="newDropFile" type="file" accept=".mp3,audio/mpeg">
+    <div class="selected-file" id="newDropSelected">No audio file selected.</div>
+    <label class="button form-field" for="newDropArtwork">Choose Artwork (Optional)</label>
+    <input id="newDropArtwork" type="file" accept="image/png,image/jpeg,image/webp">
+    <div class="selected-file" id="newDropArtworkSelected">No artwork selected.</div>
+    <fieldset class="genre-choices" id="newDropGenres">
+      <legend>Stations to play this drop</legend>
+      <label><input type="checkbox" value="jazz"> Jazz</label>
+      <label><input type="checkbox" value="hip-hop"> Hip Hop</label>
+      <label><input type="checkbox" value="rnb"> R&amp;B</label>
+      <label><input type="checkbox" value="house"> House</label>
+      <label><input type="checkbox" value="reggae"> Reggae</label>
+      <label><input type="checkbox" value="gospel"> Gospel</label>
+    </fieldset>
+    <label class="form-field" for="newDropEnabled">Status
+      <select id="newDropEnabled">
+        <option value="1">Enabled</option>
+        <option value="0">Disabled</option>
+      </select>
+    </label>
+    <button class="button upload-button" id="newDropUpload" type="button">Upload New Drop</button>
+    <div class="message" id="newDropMessage" role="status"></div>
+  </div>
   <div class="drop-grid" id="dropGrid"></div>
 </section>
 
@@ -541,6 +588,32 @@
 
     const dropGrid =
       document.getElementById("dropGrid");
+
+    const dropGenreLabels = {
+      jazz: "Jazz", "hip-hop": "Hip Hop", rnb: "R&B",
+      house: "House", reggae: "Reggae", gospel: "Gospel"
+    };
+    function dropGenres(drop) {
+      let genres = drop.genres;
+      if (typeof genres === "string" && genres) {
+        try { genres = JSON.parse(genres); } catch { genres = null; }
+      }
+      const legacy = {
+        jazz: ["jazz"], nightlife: ["hip-hop", "rnb", "house"],
+        reggae: ["reggae"], gospel: ["gospel"]
+      };
+      return Array.isArray(genres) && genres.length ? genres : legacy[drop.pool] || ["jazz"];
+    }
+    function selectedDropGenres(container) {
+      return [...container.querySelectorAll('input[type="checkbox"]:checked')]
+        .map((input) => input.value);
+    }
+    function genreChoices(drop) {
+      const assigned = dropGenres(drop);
+      return Object.entries(dropGenreLabels).map(([genre, label]) =>
+        `<label><input type="checkbox" value="${genre}" ${assigned.includes(genre) ? "checked" : ""}>${escapeHtml(label)}</label>`
+      ).join("");
+    }
 
 
     function escapeHtml(value) {
@@ -761,15 +834,17 @@ if (drop.r2_key) {
               src="${escapeHtml(drop.artwork_url || `${API_BASE}/api/drops/${encodeURIComponent(slot)}/artwork`)}">`
           : ""}
 
-        <label class="form-field" for="pool-${escapeHtml(slot)}">Genre pool
-          <select id="pool-${escapeHtml(slot)}">
-            <option value="jazz" ${(drop.pool || "jazz") === "jazz" ? "selected" : ""}>Jazz</option>
-            <option value="nightlife" ${drop.pool === "nightlife" ? "selected" : ""}>Hip Hop / R&amp;B / House</option>
-            <option value="reggae" ${drop.pool === "reggae" ? "selected" : ""}>Reggae</option>
-            <option value="gospel" ${drop.pool === "gospel" ? "selected" : ""}>Gospel</option>
+        <fieldset class="genre-choices" id="genres-${escapeHtml(slot)}">
+          <legend>Stations to play this drop</legend>
+          ${genreChoices(drop)}
+        </fieldset>
+        <label class="form-field" for="enabled-${escapeHtml(slot)}">Status
+          <select id="enabled-${escapeHtml(slot)}">
+            <option value="1" ${Number(drop.enabled) === 1 ? "selected" : ""}>Enabled</option>
+            <option value="0" ${Number(drop.enabled) === 0 ? "selected" : ""}>Disabled</option>
           </select>
         </label>
-        <button class="button" id="save-pool-${escapeHtml(slot)}" type="button">Save Genre Pool</button>
+        <button class="button" id="save-settings-${escapeHtml(slot)}" type="button">Save Drop Settings</button>
 
         <label class="button form-field" for="drop-art-${escapeHtml(slot)}">Choose Drop Artwork (Optional)</label>
         <input id="drop-art-${escapeHtml(slot)}" type="file" accept="image/png,image/jpeg,image/webp">
@@ -847,20 +922,23 @@ if (drop.r2_key) {
           `#message-${CSS.escape(slot)}`
         );
 
-      const poolSelect = card.querySelector(`#pool-${CSS.escape(slot)}`);
+      const genresField = card.querySelector(`#genres-${CSS.escape(slot)}`);
+      const enabledSelect = card.querySelector(`#enabled-${CSS.escape(slot)}`);
       const artworkInput = card.querySelector(`#drop-art-${CSS.escape(slot)}`);
 
-      card.querySelector(`#save-pool-${CSS.escape(slot)}`).addEventListener("click", async () => {
+      card.querySelector(`#save-settings-${CSS.escape(slot)}`).addEventListener("click", async () => {
         try {
+          const genres = selectedDropGenres(genresField);
+          if (!genres.length) throw new Error("Select at least one station genre.");
           const response = await adminFetch(`${API_BASE}/api/drops/${encodeURIComponent(slot)}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ pool: poolSelect.value })
+            body: JSON.stringify({ genres, enabled: Number(enabledSelect.value) })
           });
           const result = await response.json();
-          if (!response.ok || !result.ok) throw new Error(result.error || "Could not save genre pool.");
+          if (!response.ok || !result.ok) throw new Error(result.error || "Could not save drop settings.");
           message.className = "message good";
-          message.textContent = "Genre pool saved.";
+          message.textContent = "Drop settings saved.";
         } catch (error) {
           message.className = "message bad";
           message.textContent = error.message || String(error);
@@ -964,7 +1042,10 @@ formData.append(
   "duration",
   String(await getAudioDuration(file))
 );
-            formData.append("pool", poolSelect.value);
+            const genres = selectedDropGenres(genresField);
+            if (!genres.length) throw new Error("Select at least one station genre.");
+            formData.append("genres", JSON.stringify(genres));
+            formData.append("enabled", enabledSelect.value);
             if (artworkInput.files?.[0]) formData.append("artwork", artworkInput.files[0]);
 
             const response =
@@ -1110,6 +1191,62 @@ formData.append(
       }
 
     }
+
+    const newDropFile = document.getElementById("newDropFile");
+    const newDropArtwork = document.getElementById("newDropArtwork");
+    const newDropMessage = document.getElementById("newDropMessage");
+    const newDropUpload = document.getElementById("newDropUpload");
+    newDropFile.addEventListener("change", () => {
+      document.getElementById("newDropSelected").textContent =
+        newDropFile.files?.[0]?.name || "No audio file selected.";
+    });
+    newDropArtwork.addEventListener("change", () => {
+      document.getElementById("newDropArtworkSelected").textContent =
+        newDropArtwork.files?.[0]?.name || "No artwork selected.";
+    });
+    newDropUpload.addEventListener("click", async () => {
+      newDropMessage.className = "message";
+      const file = newDropFile.files?.[0];
+      const art = newDropArtwork.files?.[0];
+      const title = document.getElementById("newDropTitle").value.trim();
+      const artist = document.getElementById("newDropArtist").value.trim();
+      const genresField = document.getElementById("newDropGenres");
+      const genres = selectedDropGenres(genresField);
+      if (!file || !title || !artist || !genres.length) {
+        newDropMessage.className = "message bad";
+        newDropMessage.textContent = "Choose an MP3, title, artist, and at least one station genre.";
+        return;
+      }
+      newDropUpload.disabled = true;
+      newDropMessage.textContent = "Uploading new drop...";
+      try {
+        const form = new FormData();
+        form.append("file", file, file.name);
+        form.append("duration", String(await getAudioDuration(file)));
+        form.append("title", title);
+        form.append("artist", artist);
+        form.append("genres", JSON.stringify(genres));
+        form.append("enabled", document.getElementById("newDropEnabled").value);
+        if (art) form.append("artwork", art);
+        const response = await adminFetch(`${API_BASE}/api/drops`, { method: "POST", body: form });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || "New drop upload failed.");
+        newDropMessage.className = "message good";
+        newDropMessage.textContent = "New drop saved for the selected station rotation.";
+        document.getElementById("newDropTitle").value = "";
+        newDropFile.value = "";
+        newDropArtwork.value = "";
+        document.getElementById("newDropSelected").textContent = "No audio file selected.";
+        document.getElementById("newDropArtworkSelected").textContent = "No artwork selected.";
+        genresField.querySelectorAll('input[type="checkbox"]').forEach((box) => { box.checked = false; });
+        await loadDrops();
+      } catch (error) {
+        newDropMessage.className = "message bad";
+        newDropMessage.textContent = error.message || String(error);
+      } finally {
+        newDropUpload.disabled = false;
+      }
+    });
 
 
     async function startAdmin() {
