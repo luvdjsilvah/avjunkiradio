@@ -4902,6 +4902,10 @@ if (
             livePlaybackRequested = false;
             cancelLivePlayback();
             audio.pause();
+            playPause.textContent = "LISTEN";
+            playPause.setAttribute("aria-label", "Listen live");
+            // Show the current station immediately, before another Listen click.
+            syncToLiveStation(false);
 
             setStatus(
               "Station audio paused. Press Listen to rejoin now."

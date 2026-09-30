@@ -162,6 +162,22 @@ test('catalogue arrival during the first Listen seek does not replace the record
   assert.equal(p.audio.paused,false);
 });
 
+test('Pause immediately displays the current station clock so a rapid Listen click matches the title',async()=>{
+  const p=await player({catalogDelay:true});
+  await p.click('play-pause');
+  const original=p.audio.src;
+  await p.finishCatalog();
+  const position=p.api.getLiveStationPosition('lobby');
+  assert.notEqual(position.item.track.src,original,'Fixture must change the schedule while preserving active music');
+  await p.click('play-pause');
+  assert.equal(p.audio.paused,true);
+  assert.equal(p.audio.src,position.item.track.src,'Pause must refresh the displayed station without waiting for the timer');
+  const displayed=p.audio.src;
+  await p.click('play-pause');
+  assert.equal(p.audio.paused,false);
+  assert.equal(p.audio.src,displayed);
+});
+
 test('Listen keeps a delayed seek pending and ignores an old end event until the seek settles',async()=>{
   const p=await player();
   p.audio.requireGesture=true; p.audio.delayMetadata=true; p.audio.delaySeek=true;
