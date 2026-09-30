@@ -2700,6 +2700,7 @@ const currentLiveProgramIndexes =
 let livePlaybackRequest = 0;
 let livePlaybackPending = false;
 let livePlaybackRequested = false;
+let stationCatalogReady = false;
   function hashStationSeed(
     value
   ) {
@@ -3363,8 +3364,40 @@ function beginLivePlayback() {
   }
 }
 
+function showStationLoading() {
+  if (trackTitle) trackTitle.textContent = "Loading station";
+  if (trackArtist) trackArtist.textContent = channelConfig[activeChannel].label;
+  setStatus("Loading station...");
+}
+
+async function listenToLiveStation() {
+  if (stationCatalogReady) return syncToLiveStation(true);
+  const channel = activeChannel;
+  cancelLivePlayback();
+  const requestId = ++livePlaybackRequest;
+  livePlaybackRequested = true;
+  livePlaybackPending = true;
+  showStationLoading();
+  // Unlock this media element during the click without presenting a temporary
+  // song as the station. Its gain stays at zero until the saved schedule joins.
+  if (!audio.getAttribute("src")) {
+    audio.src = channelConfig.lobby.tracks[0].src;
+    audio.load();
+  }
+  beginLivePlayback();
+  await liveStationReady;
+  if (requestId !== livePlaybackRequest || activeChannel !== channel) return;
+  livePlaybackPending = false;
+  if (!getLiveStationPosition(channel)) {
+    cancelLivePlayback();
+    resetPlayerDisplay(channel);
+    return;
+  }
+  return syncToLiveStation(true);
+}
+
 async function syncToLiveStation(autoplay = false, leadMilliseconds = 0) {
-  if (!isProgrammedStation(activeChannel) || !audio || (!autoplay && livePlaybackPending)) return;
+  if (!stationCatalogReady || !isProgrammedStation(activeChannel) || !audio || (!autoplay && livePlaybackPending)) return;
   const channel = activeChannel;
   if (!liveStationPrograms[channel]?.length) buildLiveStationProgram(channel);
   const program = liveStationPrograms[channel];
@@ -3409,6 +3442,7 @@ async function syncToLiveStation(autoplay = false, leadMilliseconds = 0) {
       if (requestId !== livePlaybackRequest || activeChannel !== channel) return;
       if (result.error) throw result.error;
       startNextTrackFadeIn();
+      setStatus("");
     }
   } catch (error) {
     if (requestId === livePlaybackRequest) {
@@ -3423,6 +3457,7 @@ async function syncToLiveStation(autoplay = false, leadMilliseconds = 0) {
 }
 
 async function playAdjacentStationItem(direction = 1) {
+  if (!stationCatalogReady) return listenToLiveStation();
   const channel = activeChannel;
   if (!isProgrammedStation(channel) || !audio) return;
   let program = liveStationPrograms[channel] || [];
@@ -3496,6 +3531,15 @@ async function refreshStationCatalog() {
 
 async function initializeLiveStation() {
   await refreshStationCatalog();
+  stationCatalogReady = true;
+  PROGRAMMED_STATION_CHANNELS.forEach(channel => {
+    if (!liveStationPrograms[channel]) buildLiveStationProgram(channel);
+  });
+  if (!livePlaybackRequested) {
+    if (channelConfig[activeChannel].tracks.length) await syncToLiveStation(false);
+    else resetPlayerDisplay(activeChannel);
+    setStatus(channelConfig[activeChannel].label);
+  }
 }
 const liveStationReady = initializeLiveStation();
 window.setInterval(refreshStationCatalog, 60 * 1000);
@@ -3821,7 +3865,11 @@ function switchMusicChannel(
     .radioChannel =
     channel;
 
-  if (
+  if (!stationCatalogReady) {
+    resetPlayerDisplay(channel);
+    showStationLoading();
+    if (wasPlaying) listenToLiveStation();
+  } else if (
     playlist.length
   ) {
 
@@ -3869,7 +3917,7 @@ function switchMusicChannel(
   );
 
   setStatus(
-    config.label
+    stationCatalogReady ? config.label : "Loading station..."
   );
 
 }
@@ -4915,9 +4963,7 @@ if (
 
           }
 
-          await syncToLiveStation(
-            true
-          );
+          await listenToLiveStation();
 
           return;
 
@@ -5961,9 +6007,7 @@ function startNextTrackFadeIn() {
 
   }
 
-  syncToLiveStation(
-    false
-  );
+  showStationLoading();
 
   setMainstreamState(
     true

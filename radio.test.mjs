@@ -38,9 +38,10 @@ class Audio extends Element {
   async finish() { this.time=this.duration; this.paused=true; this.ended=true; await this.dispatch('ended'); }
 }
 function audioContext() {
-  const parameter=()=>({value:0,setValueAtTime(){},setTargetAtTime(){},linearRampToValueAtTime(){},cancelScheduledValues(){}});
-  const node=()=>({connect(){},gain:parameter(),frequency:parameter(),Q:parameter(),threshold:parameter(),knee:parameter(),ratio:parameter(),attack:parameter(),release:parameter(),reduction:0});
-  return {state:'running',currentTime:0,destination:{},createMediaElementSource:node,createGain:node,createBiquadFilter:node,createDynamicsCompressor:node,createAnalyser:()=>({...node(),frequencyBinCount:1024}),resume:async()=>{}};
+  const parameter=()=>({value:0,setValueAtTime(v){this.value=v;},setTargetAtTime(v){this.value=v;},linearRampToValueAtTime(v){this.value=v;},cancelScheduledValues(){}});
+  const node=()=>({connect(target){return target;},gain:parameter(),frequency:parameter(),Q:parameter(),threshold:parameter(),knee:parameter(),ratio:parameter(),attack:parameter(),release:parameter(),reduction:0});
+  const gains=[];
+  return {state:'running',currentTime:0,destination:{},gains,addEventListener(){},createMediaElementSource:node,createGain(){const gain=node();gains.push(gain);return gain;},createBiquadFilter:node,createDynamicsCompressor:node,createAnalyser:()=>({...node(),frequencyBinCount:1024}),resume:async()=>{}};
 }
 const flush=async()=>{for(let i=0;i<8;i++) await new Promise(resolve=>setImmediate(resolve));};
 async function player({catalogDelay=false,metadataDelay=false}={}) {
@@ -58,7 +59,8 @@ async function player({catalogDelay=false,metadataDelay=false}={}) {
     {id:2,genre:'hip-hop',original_filename:'Do_Me_by_Dj_Silvah.mp3',r2_key:'music/2',duration_seconds:220.578,enabled:1},
     {id:3,genre:'hip-hop',original_filename:'Snapz-explicit.mp3',r2_key:'music/3',duration_seconds:160.992,enabled:1}
   ]},'image-ads':{ok:true,ads:[]},videos:{ok:true,videos:[]}};
-  const window={AudioContext:audioContext,addEventListener(){},setInterval(fn,ms){intervals.set(++timer,{fn,ms});return timer;},clearInterval(id){intervals.delete(id);},setTimeout(fn,ms){timeouts.set(++timer,{fn,ms});return timer;},clearTimeout(id){timeouts.delete(id);}};
+  const contexts=[];
+  const window={AudioContext:function(){const ctx=audioContext();contexts.push(ctx);return ctx;},requestAnimationFrame:()=>1,cancelAnimationFrame(){},addEventListener(){},setInterval(fn,ms){intervals.set(++timer,{fn,ms});return timer;},clearInterval(id){intervals.delete(id);},setTimeout(fn,ms){timeouts.set(++timer,{fn,ms});return timer;},clearTimeout(id){timeouts.delete(id);}};
   const document={documentElement:{dataset:{}},getElementById:id=>elements.get(id)||null,querySelectorAll:()=>[],addEventListener(name,fn){if(name==='DOMContentLoaded') onReady=fn;},createElement:()=>new Element()};
   const logs=[];
   let releaseCatalog;
@@ -72,7 +74,7 @@ async function player({catalogDelay=false,metadataDelay=false}={}) {
   audio.durationFor=src=>src ? api.getRequiredDuration({src}) : 10000;
   if(!catalogDelay) await api.ready;
   await flush();
-  return {api,audio,data,elements,logs,intervals,timeouts,async finishCatalog(){releaseCatalog?.();await api.ready;await flush();},setNow:value=>{now=value;},advance:seconds=>{now+=seconds*1000;},async click(id){await elements.get(id).dispatch('click');await flush();},async tick(ms){for(const item of intervals.values()) if(item.ms===ms) await item.fn();await flush();}};
+  return {api,audio,data,elements,logs,contexts,intervals,timeouts,async finishCatalog(){releaseCatalog?.();await api.ready;await flush();},setNow:value=>{now=value;},advance:seconds=>{now+=seconds*1000;},async click(id){await elements.get(id).dispatch('click');await flush();},async tick(ms){for(const item of intervals.values()) if(item.ms===ms) await item.fn();await flush();}};
 }
 
 test('Listen joins the current station offset; paused station clock advances and resume rejoins now',async()=>{
@@ -120,26 +122,32 @@ test('an end event while paused or seeking cannot skip the displayed song',async
   assert.equal(p.api.currentLiveProgramIndexes.lobby,index);
 });
 
-test('Listen works before catalogue requests finish and preserves the displayed recording when they arrive',async()=>{
+test('Listen unlocks media from the click while the catalogue loads, then joins the saved station',async()=>{
   const p=await player({catalogDelay:true});
   p.audio.requireGesture=true;
-  const source=p.audio.src;
-  await p.click('play-pause');
-  assert.equal(p.audio.paused,false);
-  assert.equal(p.audio.src,source);
+  assert.equal(p.audio.src,null);
+  assert.equal(p.elements.get('player-track-title').textContent,'Loading station');
+  const listen=p.elements.get('play-pause').dispatch('click'); await flush();
   assert.equal(p.audio.unlocked,true);
-  const count=p.audio.plays.length;
+  assert.equal(p.audio.playAttempts,1);
+  assert.equal(p.contexts[0].gains[0].gain.value,0,'The unlock must stay silent while the station is loading');
+  assert.equal(p.elements.get('player-track-title').textContent,'Loading station');
   await p.finishCatalog();
-  assert.equal(p.audio.src,source);
-  assert.equal(p.audio.plays.length,count);
+  await listen; await flush();
+  const position=p.api.getLiveStationPosition('lobby');
+  assert.equal(p.audio.src,position.item.track.src);
+  assert.equal(p.elements.get('player-track-title').textContent,position.item.track.title);
+  assert.equal(p.audio.paused,false);
+  assert.equal(p.contexts[0].gains[0].gain.value,1);
+  assert.equal(p.logs.length,0,JSON.stringify(p.logs.map(args=>args.map(value=>value?.stack||value))));
 });
 
-test('a loaded catalogue immediately replaces a stale paused preview even while its metadata is pending',async()=>{
+test('the initial preview waits for the saved catalogue and Listen starts that displayed recording',async()=>{
   const p=await player({catalogDelay:true,metadataDelay:true});
-  const oldSource=p.audio.src;
+  assert.equal(p.audio.src,null);
+  assert.equal(p.elements.get('player-track-title').textContent,'Loading station');
   const catalog=p.finishCatalog(); await flush();
   const position=p.api.getLiveStationPosition('lobby');
-  assert.notEqual(position.item.track.src,oldSource,'Fixture must move the live clock when saved assignments arrive');
   assert.equal(p.audio.src,position.item.track.src,'The displayed title and source must follow the loaded station clock');
   p.audio.readyState=1; await p.audio.dispatch('loadedmetadata');
   await catalog;
@@ -149,24 +157,96 @@ test('a loaded catalogue immediately replaces a stale paused preview even while 
   assert.equal(p.audio.paused,false);
 });
 
-test('catalogue arrival during the first Listen seek does not replace the recording selected by the click',async()=>{
+test('first Listen before both catalogue and metadata arrive starts one saved station recording',async()=>{
   const p=await player({catalogDelay:true,metadataDelay:true});
   p.audio.requireGesture=true;
-  const source=p.audio.src;
   const listen=p.elements.get('play-pause').dispatch('click'); await flush();
   await p.finishCatalog();
-  assert.equal(p.audio.src,source);
+  const position=p.api.getLiveStationPosition('lobby');
+  assert.equal(p.audio.src,position.item.track.src);
+  assert.equal(p.elements.get('player-track-title').textContent,position.item.track.title);
   p.audio.delayMetadata=false; p.audio.readyState=1;
   await p.audio.dispatch('loadedmetadata'); await listen; await flush();
-  assert.equal(p.audio.src,source,'A catalogue revision must not be mistaken for a natural clock boundary');
+  assert.equal(p.audio.src,position.item.track.src);
   assert.equal(p.audio.paused,false);
+  assert.ok(Math.abs(p.audio.currentTime-position.offset)<0.05);
+  assert.equal(p.contexts[0].gains[0].gain.value,1);
+});
+
+test('a later catalogue update replaces a paused preview that is still waiting for metadata',async()=>{
+  const p=await player();
+  p.audio.delayMetadata=true;
+  p.api.switchMusicChannel('hip-hop'); await flush();
+  const oldSource=p.audio.src;
+  p.data.music.music=[{id:10,genre:'hip-hop',r2_key:'music/10',duration_seconds:300,enabled:1}];
+  const refresh=p.api.refreshStationCatalog(); await flush();
+  const position=p.api.getLiveStationPosition('hip-hop');
+  assert.notEqual(position.item.track.src,oldSource);
+  assert.equal(p.audio.src,position.item.track.src);
+  p.audio.readyState=1; await p.audio.dispatch('loadedmetadata'); await refresh;
+  assert.ok(Math.abs(p.audio.currentTime-position.offset)<0.05);
+  assert.equal(p.audio.paused,true);
+});
+
+test('a later catalogue revision during a Listen seek preserves the selected recording',async()=>{
+  const p=await player();
+  p.audio.requireGesture=true; p.audio.delayMetadata=true;
+  p.api.switchMusicChannel('hip-hop'); await flush();
+  const source=p.audio.src;
+  const listen=p.elements.get('play-pause').dispatch('click'); await flush();
+  p.data.music.music=[{id:10,genre:'hip-hop',r2_key:'music/10',duration_seconds:300,enabled:1}];
+  await p.api.refreshStationCatalog();
+  assert.notEqual(p.api.getLiveStationPosition('hip-hop').item.track.src,source);
+  assert.equal(p.audio.src,source);
+  p.audio.delayMetadata=false; p.audio.readyState=1;
+  await p.audio.dispatch('loadedmetadata'); await listen;
+  assert.equal(p.audio.src,source);
+  assert.equal(p.audio.paused,false);
+  assert.equal(p.contexts[0].gains[0].gain.value,1);
+});
+
+test('cancelling Listen before catalogue arrival keeps the station paused after loading',async()=>{
+  const p=await player({catalogDelay:true});
+  p.audio.requireGesture=true;
+  const listen=p.elements.get('play-pause').dispatch('click'); await flush();
+  await p.click('play-pause');
+  assert.equal(p.audio.paused,true);
+  await p.finishCatalog(); await listen; await flush();
+  assert.equal(p.audio.paused,true);
+  assert.equal(p.audio.plays.length,1);
+  assert.equal(p.elements.get('play-pause').getAttribute('aria-label'),'Listen live');
+});
+
+test('changing genre during initial loading carries the Listen request to the selected station',async()=>{
+  const p=await player({catalogDelay:true});
+  p.audio.requireGesture=true;
+  const listen=p.elements.get('play-pause').dispatch('click'); await flush();
+  p.api.switchMusicChannel('hip-hop'); await flush();
+  await p.finishCatalog(); await listen; await flush();
+  assert.equal(p.api.channel,'hip-hop');
+  assert.equal(p.audio.src,p.api.getLiveStationPosition('hip-hop').item.track.src);
+  assert.equal(p.audio.paused,false);
+  assert.equal(p.contexts[0].gains[0].gain.value,1);
+});
+
+test('Listen during initial loading of an empty station ends in a silent off-air state',async()=>{
+  const p=await player({catalogDelay:true});
+  p.audio.requireGesture=true;
+  p.api.switchMusicChannel('house');
+  const listen=p.elements.get('play-pause').dispatch('click'); await flush();
+  await p.finishCatalog(); await listen; await flush();
+  assert.equal(p.api.getLiveStationPosition('house'),null);
+  assert.equal(p.audio.paused,true);
+  assert.equal(p.audio.src,null);
+  assert.equal(p.api.pending,false);
 });
 
 test('Pause immediately displays the current station clock so a rapid Listen click matches the title',async()=>{
-  const p=await player({catalogDelay:true});
+  const p=await player();
   await p.click('play-pause');
   const original=p.audio.src;
-  await p.finishCatalog();
+  p.data.music.music.push({id:10,genre:'jazz',r2_key:'music/10',duration_seconds:300,enabled:1});
+  await p.api.refreshStationCatalog();
   const position=p.api.getLiveStationPosition('lobby');
   assert.notEqual(position.item.track.src,original,'Fixture must change the schedule while preserving active music');
   await p.click('play-pause');
