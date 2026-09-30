@@ -2028,6 +2028,12 @@ const MUSIC_GENRE_CHANNELS = {
   gospel: "gospel"
 };
 
+// Preserve complete recordings on the genre stations. Jazz retains its
+// existing transition behaviour.
+const FULL_RECORDING_STATION_CHANNELS = new Set([
+  "hip-hop", "rnb", "house", "reggae", "gospel"
+]);
+
 const GENRE_POOLS = {
   lobby: "jazz",
   "hip-hop": "nightlife",
@@ -3292,7 +3298,7 @@ function cancelLivePlayback() {
   if (cancelLiveSeek) cancelLiveSeek();
 }
 
-function seekLiveAudio(seconds, requestId = livePlaybackRequest) {
+function seekLiveAudio(seconds, requestId = livePlaybackRequest, waitForData = false) {
   if (cancelLiveSeek) cancelLiveSeek();
   return new Promise((resolve) => {
     if (!audio) return resolve(false);
@@ -3304,6 +3310,7 @@ function seekLiveAudio(seconds, requestId = livePlaybackRequest) {
       finished = true;
       audio.removeEventListener("loadedmetadata", applySeek);
       audio.removeEventListener("seeked", seekFinished);
+      audio.removeEventListener("canplay", seekFinished);
       audio.removeEventListener("error", failed);
       window.clearTimeout(timeout);
       if (cancelLiveSeek === cancel) cancelLiveSeek = null;
@@ -3316,7 +3323,7 @@ function seekLiveAudio(seconds, requestId = livePlaybackRequest) {
       if (requestId !== livePlaybackRequest || source !== audio.getAttribute("src") || audio.error) {
         return finish(false);
       }
-      if (seekApplied && !audio.seeking) finish(true);
+      if (seekApplied && !audio.seeking && (!waitForData || audio.readyState >= 3)) finish(true);
     };
     const applySeek = () => {
       if (requestId !== livePlaybackRequest || source !== audio.getAttribute("src") || audio.error) {
@@ -3339,14 +3346,17 @@ function seekLiveAudio(seconds, requestId = livePlaybackRequest) {
     cancelLiveSeek = cancel;
     audio.addEventListener("loadedmetadata", applySeek);
     audio.addEventListener("seeked", seekFinished);
+    if (waitForData) audio.addEventListener("canplay", seekFinished);
     audio.addEventListener("error", failed);
     timeout = window.setTimeout(failed, 10000);
     applySeek();
   });
 }
 
-function beginLivePlayback() {
+function beginLivePlayback({ startAtBeginning = false } = {}) {
   const contextReady = resumeAudioContext();
+  const requestId = livePlaybackRequest;
+  const source = audio.getAttribute("src");
   // Play must be called synchronously from Listen, before any metadata/API wait.
   // Keep the source silent until it reaches the requested station position.
   if (radioSourceGain && audioContext) {
@@ -3357,7 +3367,15 @@ function beginLivePlayback() {
     const playing = audio.play();
     // Observe rejection immediately, even if metadata is still being loaded.
     return Promise.all([contextReady, playing]).then(
-      () => ({ error: null }), error => ({ error })
+      () => {
+        // Start the gain ramp when playback actually begins, so buffering cannot
+        // use up the ramp before the listener hears the opening.
+        if (startAtBeginning && requestId === livePlaybackRequest &&
+            source === audio.getAttribute("src") && !audio.paused) {
+          startNextTrackFadeIn();
+        }
+        return { error: null };
+      }, error => ({ error })
     );
   } catch (error) {
     return Promise.resolve({ error });
@@ -3473,24 +3491,26 @@ async function playAdjacentStationItem(direction = 1) {
   }
   const nextIndex = (index + direction + program.length) % program.length;
   const item = program[nextIndex];
+  const preserveOpening = FULL_RECORDING_STATION_CHANNELS.has(channel);
   window.setRadioTrack(item.track);
   const requestId = ++livePlaybackRequest;
   livePlaybackPending = true;
   currentLiveProgramIndexes[channel] = nextIndex;
   if (item.type === "music" && Number.isInteger(item.playlistIndex)) currentTrackIndex = item.playlistIndex;
-  const playback = beginLivePlayback();
+  const playback = preserveOpening ? null : beginLivePlayback();
   try {
     if (requestId !== livePlaybackRequest || activeChannel !== channel) return;
-    // Natural endings and arrow controls start adjacent items at their true beginning.
-    if (!await seekLiveAudio(0, requestId)) {
+    // Unlike Listen's live-clock join, an automatic transition must not consume
+    // the opening while metadata, seeking or buffering is still in progress.
+    if (!await seekLiveAudio(0, requestId, preserveOpening)) {
       if (requestId === livePlaybackRequest) throw new Error("Station audio could not reach the track beginning.");
       return;
     }
     if (requestId !== livePlaybackRequest || activeChannel !== channel) return;
-    const result = await playback;
+    const result = await (playback || beginLivePlayback({ startAtBeginning: true }));
     if (requestId !== livePlaybackRequest || activeChannel !== channel) return;
     if (result.error) throw result.error;
-    startNextTrackFadeIn();
+    if (!preserveOpening) startNextTrackFadeIn();
   } catch (error) {
     if (requestId === livePlaybackRequest) {
       livePlaybackRequested = false;
@@ -5441,8 +5461,10 @@ setMainstreamState(
   const HARDER_TRACK_END_FADE_SECONDS =
     0.75;
 
-  const TRACK_START_FADE_SECONDS =
-    0.30;
+  // A short gain ramp removes a switching click without burying the first word
+  // or beat beneath a long fade. No genre recording is faded out prematurely.
+  const GENRE_TRACK_START_FADE_SECONDS =
+    0.02;
 
   function getTrackEndFadeSeconds() {
     return (
@@ -5545,10 +5567,12 @@ function startNextTrackFadeIn() {
     now
   );
 
-  gain.setValueAtTime(
-    1,
-    now
-  );
+  if (FULL_RECORDING_STATION_CHANNELS.has(activeChannel)) {
+    gain.setValueAtTime(0, now);
+    gain.linearRampToValueAtTime(1, now + GENRE_TRACK_START_FADE_SECONDS);
+  } else {
+    gain.setValueAtTime(1, now);
+  }
 
   smoothTransitionPending =
     false;
@@ -5628,6 +5652,7 @@ function startNextTrackFadeIn() {
         if (
           videoPlaybackActive ||
           audio.paused ||
+          FULL_RECORDING_STATION_CHANNELS.has(activeChannel) ||
           !isProgrammedStation(
             activeChannel
           ) ||

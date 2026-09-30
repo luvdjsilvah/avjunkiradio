@@ -20,25 +20,44 @@ class Element {
   }
 }
 class Audio extends Element {
-  constructor() { super(); this.paused=true; this.ended=false; this.readyState=1; this.duration=10000; this.time=0; this.plays=[]; this.delayMetadata=false; }
+  constructor() { super(); this.paused=true; this.ended=false; this.readyState=4; this.duration=10000; this.time=0; this.plays=[]; this.delayMetadata=false; }
   set src(value) { this.setAttribute('src',value); }
   get src() { return this.getAttribute('src'); }
   set currentTime(value) { this.time=value; if(this.delaySeek) this.seeking=true; }
   get currentTime() { return this.time; }
   pause() { const playing=!this.paused; this.paused=true; if(playing) this.dispatch('pause'); }
-  load() { this.time=0; this.ended=false; this.seeking=false; this.readyState=this.delayMetadata?0:1; this.duration=this.durationFor?.(this.src)||10000; }
+  load() { this.time=0; this.ended=false; this.seeking=false; this.readyState=this.delayMetadata?0:4; this.duration=this.durationFor?.(this.src)||10000; }
   async play() {
     this.playAttempts=(this.playAttempts||0)+1;
     if(this.requireGesture && !this.unlocked && !this.gesture?.active) {
       const error=new Error('Playback requires a user gesture'); error.name='NotAllowedError'; throw error;
     }
     if(this.gesture?.active) this.unlocked=true;
+    if(this.playGate) await this.playGate;
     this.paused=false; this.ended=false; this.plays.push({src:this.src,time:this.time}); await this.dispatch('play');
   }
   async finish() { this.time=this.duration; this.paused=true; this.ended=true; await this.dispatch('ended'); }
 }
 function audioContext() {
-  const parameter=()=>({value:0,setValueAtTime(v){this.value=v;},setTargetAtTime(v){this.value=v;},linearRampToValueAtTime(v){this.value=v;},cancelScheduledValues(){}});
+  const parameter=()=>({
+    value:0,events:[],initialValue:0,
+    setValueAtTime(value,time){if(!this.events.length)this.initialValue=this.value;this.value=value;this.events.push({value,time,type:'set'});},
+    setTargetAtTime(value,time){this.setValueAtTime(value,time);},
+    linearRampToValueAtTime(value,time){this.value=value;this.events.push({value,time,type:'ramp'});},
+    cancelScheduledValues(time){this.events=this.events.filter(event=>event.time<time);},
+    valueAt(time){
+      let previous={value:this.initialValue,time:0};
+      for(const event of this.events) {
+        if(event.time>time) {
+          return event.type==='ramp' && event.time>previous.time
+            ? previous.value+(event.value-previous.value)*(time-previous.time)/(event.time-previous.time)
+            : previous.value;
+        }
+        previous=event;
+      }
+      return previous.value;
+    }
+  });
   const node=()=>({connect(target){return target;},gain:parameter(),frequency:parameter(),Q:parameter(),threshold:parameter(),knee:parameter(),ratio:parameter(),attack:parameter(),release:parameter(),reduction:0});
   const gains=[];
   return {state:'running',currentTime:0,destination:{},gains,addEventListener(){},createMediaElementSource:node,createGain(){const gain=node();gains.push(gain);return gain;},createBiquadFilter:node,createDynamicsCompressor:node,createAnalyser:()=>({...node(),frequencyBinCount:1024}),resume:async()=>{}};
@@ -437,4 +456,118 @@ test('music and drop changes in the same refresh retain the playing index and ad
   await p.audio.finish();await flush();
   assert.equal(p.api.currentLiveProgramIndexes.lobby,(index+1)%program.length);
   assert.equal(p.audio.src,program[(index+1)%program.length].track.src);assert.equal(p.audio.currentTime,0);
+});
+
+const genreChannels=['hip-hop','rnb','house','reggae','gospel'];
+async function genrePlayer(channel) {
+  const p=await player();
+  p.data.music.music.push({id:70,genre:'house',r2_key:'music/house',duration_seconds:100,enabled:1});
+  p.data.music.music.push({id:71,genre:'reggae',r2_key:'music/reggae',duration_seconds:100,enabled:1});
+  p.data.drops.drops=[drop('spoken-ad',genreChannels,{duration_seconds:14.759183673469387})];
+  await p.api.refreshStationCatalog();p.api.switchMusicChannel(channel);await flush();
+  p.audio.requireGesture=true;
+  await p.click('play-pause');
+  assert.equal(p.audio.paused,false,`${channel} fixture must be playing`);
+  return p;
+}
+
+test('all genre stations keep music and spoken ads audible through their final samples',async()=>{
+  for(const channel of genreChannels) {
+    const p=await genrePlayer(channel);
+    for(const type of ['music','id']) {
+      const program=p.api.liveStationPrograms[channel];
+      for(let i=0;program[p.api.currentLiveProgramIndexes[channel]].type!==type && i<program.length;i++) {
+        await p.audio.finish();await flush();
+      }
+      assert.equal(program[p.api.currentLiveProgramIndexes[channel]].type,type);
+      const src=p.audio.src,index=p.api.currentLiveProgramIndexes[channel];
+      for(const remaining of [.74,.34,.05]) {
+        p.audio.currentTime=p.audio.duration-remaining;
+        await p.audio.dispatch('timeupdate');await flush();
+        const gain=p.contexts[0].gains[0].gain;
+        assert.equal(gain.valueAt(p.contexts[0].currentTime+remaining),1,`${channel} ${type} must stay audible until its real ending`);
+        assert.equal(p.audio.src,src);assert.equal(p.api.currentLiveProgramIndexes[channel],index);
+      }
+      await p.audio.finish();await flush();
+      assert.equal(p.api.currentLiveProgramIndexes[channel],(index+1)%program.length);
+      assert.equal(p.audio.currentTime,0);
+    }
+  }
+});
+
+test('genre transitions wait for metadata, seeking and playable data before consuming the next intro',async()=>{
+  for(const channel of genreChannels) {
+    const p=await genrePlayer(channel);
+    const plays=p.audio.plays.length;
+    p.audio.delayMetadata=true;p.audio.delaySeek=true;
+    await p.audio.finish();await flush();
+    assert.equal(p.api.pending,true);
+    assert.equal(p.audio.paused,true,'The next recording must not run silently while it loads');
+    assert.equal(p.audio.plays.length,plays);
+    p.audio.readyState=1;await p.audio.dispatch('loadedmetadata');await flush();
+    assert.equal(p.audio.paused,true);
+    p.audio.seeking=false;await p.audio.dispatch('seeked');await flush();
+    assert.equal(p.audio.paused,true,'Metadata alone does not guarantee playable audio');
+    p.advance(2);await p.tick(1000);
+    assert.equal(p.audio.currentTime,0,'The station preview clock must not overwrite a pending intro');
+    const source=p.audio.src;
+    p.audio.ended=true;await p.audio.dispatch('ended');await flush();p.audio.ended=false;
+    assert.equal(p.audio.src,source,'An obsolete end event must not skip an intro that is buffering');
+    p.audio.readyState=3;await p.audio.dispatch('canplay');await flush();
+    assert.equal(p.audio.paused,false);assert.equal(p.api.pending,false);
+    assert.equal(p.audio.plays.length,plays+1);
+    assert.equal(p.audio.plays.at(-1).time,0);
+    assert.equal(p.audio.currentTime,0);
+    await p.audio.dispatch('canplay');await flush();
+    assert.equal(p.audio.plays.length,plays+1,'A later readiness event must not start the recording twice');
+  }
+});
+
+test('genre transitions ease the next recording in instead of jumping its volume from mute to full',async()=>{
+  for(const channel of genreChannels) {
+    const p=await genrePlayer(channel);
+    await p.audio.finish();await flush();
+    const ctx=p.contexts[0],gain=ctx.gains[0].gain;
+    assert.equal(gain.valueAt(ctx.currentTime),0);
+    assert.ok(gain.valueAt(ctx.currentTime+.005)>0 && gain.valueAt(ctx.currentTime+.005)<1,'The opening must rise smoothly');
+    assert.equal(gain.valueAt(ctx.currentTime+.05),1,'The ramp must be short enough to preserve opening words and beats');
+    assert.equal(p.audio.plays.at(-1).time,0);
+  }
+});
+
+test('the genre start ramp waits for actual playback rather than expiring during a delayed play request',async()=>{
+  const p=await genrePlayer('hip-hop');
+  let releasePlay;p.audio.playGate=new Promise(resolve=>{releasePlay=resolve;});
+  await p.audio.finish();await flush();
+  const ctx=p.contexts[0],gain=ctx.gains[0].gain;
+  ctx.currentTime+=.5;
+  assert.equal(p.api.pending,true);assert.equal(p.audio.paused,true);
+  assert.equal(gain.valueAt(ctx.currentTime),0);
+  releasePlay();await flush();
+  assert.equal(p.audio.paused,false);assert.equal(p.audio.currentTime,0);
+  assert.equal(gain.valueAt(ctx.currentTime),0);
+  assert.ok(gain.valueAt(ctx.currentTime+.005)>0 && gain.valueAt(ctx.currentTime+.005)<1);
+  assert.equal(gain.valueAt(ctx.currentTime+.05),1);
+});
+
+test('pausing a genre transition cancels a loading recording and late canplay cannot restart it',async()=>{
+  const p=await genrePlayer('hip-hop');
+  p.audio.delayMetadata=true;
+  await p.audio.finish();await flush();
+  const plays=p.audio.plays.length;
+  await p.click('play-pause');
+  p.audio.delayMetadata=false;p.audio.readyState=4;p.audio.seeking=false;
+  await p.audio.dispatch('loadedmetadata');await p.audio.dispatch('seeked');await p.audio.dispatch('canplay');await flush();
+  assert.equal(p.audio.paused,true);assert.equal(p.audio.plays.length,plays);
+});
+
+test('the Jazz station keeps its existing ending fade and immediate full-volume start',async()=>{
+  const p=await player();await p.click('play-pause');
+  p.audio.currentTime=p.audio.duration-.3;
+  await p.audio.dispatch('timeupdate');
+  assert.equal(p.contexts[0].gains[0].gain.value,0);
+  await p.audio.finish();await flush();
+  assert.equal(p.contexts[0].gains[0].gain.value,1);
+  assert.equal(p.contexts[0].gains[0].gain.valueAt(p.contexts[0].currentTime),1);
+  assert.equal(p.audio.currentTime,0);assert.equal(p.audio.paused,false);
 });
