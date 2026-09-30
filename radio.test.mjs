@@ -12,17 +12,29 @@ class Element {
   removeAttribute(key) { this.attributes.delete(key); }
   addEventListener(name, fn) { const handlers=this.listeners.get(name)||new Set(); handlers.add(fn); this.listeners.set(name,handlers); }
   removeEventListener(name, fn) { this.listeners.get(name)?.delete(fn); }
-  async dispatch(name) { await Promise.all([...this.listeners.get(name)||[]].map(fn=>fn({target:this}))); }
+  async dispatch(name) {
+    if(name==='click' && this.gesture) this.gesture.active=true;
+    const results=[...this.listeners.get(name)||[]].map(fn=>fn({target:this}));
+    if(name==='click' && this.gesture) this.gesture.active=false;
+    await Promise.all(results);
+  }
 }
 class Audio extends Element {
   constructor() { super(); this.paused=true; this.ended=false; this.readyState=1; this.duration=10000; this.time=0; this.plays=[]; this.delayMetadata=false; }
   set src(value) { this.setAttribute('src',value); }
   get src() { return this.getAttribute('src'); }
-  set currentTime(value) { this.time=value; }
+  set currentTime(value) { this.time=value; if(this.delaySeek) this.seeking=true; }
   get currentTime() { return this.time; }
   pause() { const playing=!this.paused; this.paused=true; if(playing) this.dispatch('pause'); }
-  load() { this.time=0; this.ended=false; this.readyState=this.delayMetadata?0:1; this.duration=this.durationFor?.(this.src)||10000; }
-  async play() { this.paused=false; this.ended=false; this.plays.push({src:this.src,time:this.time}); await this.dispatch('play'); }
+  load() { this.time=0; this.ended=false; this.seeking=false; this.readyState=this.delayMetadata?0:1; this.duration=this.durationFor?.(this.src)||10000; }
+  async play() {
+    this.playAttempts=(this.playAttempts||0)+1;
+    if(this.requireGesture && !this.unlocked && !this.gesture?.active) {
+      const error=new Error('Playback requires a user gesture'); error.name='NotAllowedError'; throw error;
+    }
+    if(this.gesture?.active) this.unlocked=true;
+    this.paused=false; this.ended=false; this.plays.push({src:this.src,time:this.time}); await this.dispatch('play');
+  }
   async finish() { this.time=this.duration; this.paused=true; this.ended=true; await this.dispatch('ended'); }
 }
 function audioContext() {
@@ -31,12 +43,15 @@ function audioContext() {
   return {state:'running',currentTime:0,destination:{},createMediaElementSource:node,createGain:node,createBiquadFilter:node,createDynamicsCompressor:node,createAnalyser:()=>({...node(),frequencyBinCount:1024}),resume:async()=>{}};
 }
 const flush=async()=>{for(let i=0;i<8;i++) await new Promise(resolve=>setImmediate(resolve));};
-async function player() {
+async function player({catalogDelay=false}={}) {
   let now=Date.parse('2026-09-30T03:00:00Z');
   class Clock extends Date { static now(){return now;} }
   const audio=new Audio();
   const elements=new Map(['play-pause','previous-track','next-track','player-track-title','player-artist','radio-status'].map(id=>[id,new Element()]));
   elements.set('radio-audio',audio);
+  const gesture={active:false};
+  audio.gesture=gesture;
+  for(const element of elements.values()) element.gesture=gesture;
   const intervals=new Map(),timeouts=new Map(); let timer=0; let onReady;
   const data={drops:{ok:true,drops:[]},music:{ok:true,music:[
     {id:2,genre:'hip-hop',original_filename:'Do_Me_by_Dj_Silvah.mp3',r2_key:'music/2',duration_seconds:220.578,enabled:1},
@@ -45,15 +60,18 @@ async function player() {
   const window={AudioContext:audioContext,addEventListener(){},setInterval(fn,ms){intervals.set(++timer,{fn,ms});return timer;},clearInterval(id){intervals.delete(id);},setTimeout(fn,ms){timeouts.set(++timer,{fn,ms});return timer;},clearTimeout(id){timeouts.delete(id);}};
   const document={documentElement:{dataset:{}},getElementById:id=>elements.get(id)||null,querySelectorAll:()=>[],addEventListener(name,fn){if(name==='DOMContentLoaded') onReady=fn;},createElement:()=>new Element()};
   const logs=[];
-  const context=vm.createContext({window,document,Date:Clock,Image:class{},Uint8Array,requestAnimationFrame:()=>1,cancelAnimationFrame(){},console:{warn:(...args)=>logs.push(args),error:(...args)=>logs.push(args),log(){}},fetch:async url=>({ok:true,json:async()=>JSON.parse(JSON.stringify(data[url.split('/').at(-1)]))})});
+  let releaseCatalog;
+  const catalogGate=catalogDelay?new Promise(resolve=>{releaseCatalog=resolve;}):Promise.resolve();
+  const context=vm.createContext({window,document,Date:Clock,Image:class{},Uint8Array,requestAnimationFrame:()=>1,cancelAnimationFrame(){},console:{warn:(...args)=>logs.push(args),error:(...args)=>logs.push(args),log(){}},fetch:async url=>{await catalogGate;return {ok:true,json:async()=>JSON.parse(JSON.stringify(data[url.split('/').at(-1)]))};}});
   let source=readFileSync(new URL('./radio.js',import.meta.url),'utf8');
   source=source.replace(/\n\}\);\s*$/,`\nwindow.__test={ready:liveStationReady,syncToLiveStation,playAdjacentStationItem,switchMusicChannel,buildLiveStationProgram,getLiveStationPosition,loadStationIdsFromApi,loadMusicFromApi,refreshStationCatalog,getRequiredDuration,channelConfig,liveStationPrograms,currentLiveProgramIndexes,liveStationDurations,get channel(){return activeChannel;},get pending(){return livePlaybackPending;}};\n});`);
   vm.runInContext(source,context);
   onReady();
   const api=window.__test;
   audio.durationFor=src=>src ? api.getRequiredDuration({src}) : 10000;
-  await api.ready; await flush();
-  return {api,audio,data,elements,logs,intervals,timeouts,setNow:value=>{now=value;},advance:seconds=>{now+=seconds*1000;},async click(id){await elements.get(id).dispatch('click');await flush();},async tick(ms){for(const item of intervals.values()) if(item.ms===ms) await item.fn();await flush();}};
+  if(!catalogDelay) await api.ready;
+  await flush();
+  return {api,audio,data,elements,logs,intervals,timeouts,async finishCatalog(){releaseCatalog?.();await api.ready;await flush();},setNow:value=>{now=value;},advance:seconds=>{now+=seconds*1000;},async click(id){await elements.get(id).dispatch('click');await flush();},async tick(ms){for(const item of intervals.values()) if(item.ms===ms) await item.fn();await flush();}};
 }
 
 test('Listen joins the current station offset; paused station clock advances and resume rejoins now',async()=>{
@@ -71,8 +89,83 @@ test('Listen joins the current station offset; paused station clock advances and
   assert.ok(Math.abs(p.audio.currentTime-position.offset)<0.05);
 });
 
+test('first Listen starts media inside the click even when station metadata is delayed',async()=>{
+  const p=await player();
+  p.audio.requireGesture=true;
+  p.audio.delayMetadata=true;
+  p.api.switchMusicChannel('hip-hop'); await flush();
+  const before=p.api.getLiveStationPosition('hip-hop');
+  const listen=p.elements.get('play-pause').dispatch('click');
+  await flush();
+  assert.equal(p.audio.playAttempts,1,'Play must happen before metadata arrives and the click expires');
+  p.audio.readyState=1; await p.audio.dispatch('loadedmetadata');
+  await listen; await flush();
+  assert.equal(p.audio.paused,false);
+  assert.equal(p.audio.src,before.item.track.src);
+  assert.ok(Math.abs(p.audio.currentTime-before.offset)<0.05);
+});
+
+test('an end event while paused or seeking cannot skip the displayed song',async()=>{
+  const p=await player();
+  const source=p.audio.src, index=p.api.currentLiveProgramIndexes.lobby;
+  await p.audio.dispatch('ended'); await flush();
+  assert.equal(p.audio.src,source,'Paused preview must not advance or start playback');
+  assert.equal(p.api.currentLiveProgramIndexes.lobby,index);
+  assert.equal(p.audio.paused,true);
+  await p.click('play-pause');
+  p.audio.seeking=true;
+  await p.audio.dispatch('ended'); await flush();
+  assert.equal(p.audio.src,source,'A seek end event must not act like a natural recording end');
+  assert.equal(p.api.currentLiveProgramIndexes.lobby,index);
+});
+
+test('Listen works before catalogue requests finish and preserves the displayed recording when they arrive',async()=>{
+  const p=await player({catalogDelay:true});
+  p.audio.requireGesture=true;
+  const source=p.audio.src;
+  await p.click('play-pause');
+  assert.equal(p.audio.paused,false);
+  assert.equal(p.audio.src,source);
+  assert.equal(p.audio.unlocked,true);
+  const count=p.audio.plays.length;
+  await p.finishCatalog();
+  assert.equal(p.audio.src,source);
+  assert.equal(p.audio.plays.length,count);
+});
+
+test('Listen keeps a delayed seek pending and ignores an old end event until the seek settles',async()=>{
+  const p=await player();
+  p.audio.requireGesture=true; p.audio.delayMetadata=true; p.audio.delaySeek=true;
+  p.api.switchMusicChannel('hip-hop'); await flush();
+  const source=p.audio.src;
+  const listen=p.elements.get('play-pause').dispatch('click'); await flush();
+  p.audio.readyState=1; await p.audio.dispatch('loadedmetadata'); await flush();
+  assert.equal(p.api.pending,true);
+  p.audio.ended=true; await p.audio.dispatch('ended'); await flush();
+  assert.equal(p.audio.src,source);
+  p.audio.ended=false; p.audio.seeking=false;
+  await p.audio.dispatch('seeked'); await listen; await flush();
+  assert.equal(p.api.pending,false);
+  assert.equal(p.audio.paused,false);
+  assert.equal(p.audio.src,source);
+});
+
+test('a second Listen click cancels delayed startup and later metadata cannot restart the song',async()=>{
+  const p=await player();
+  p.audio.requireGesture=true; p.audio.delayMetadata=true;
+  p.api.switchMusicChannel('hip-hop'); await flush();
+  const listen=p.elements.get('play-pause').dispatch('click'); await flush();
+  assert.equal(p.api.pending,true);
+  await p.click('play-pause'); await listen;
+  assert.equal(p.audio.paused,true);
+  p.audio.readyState=1; await p.audio.dispatch('loadedmetadata'); await flush();
+  assert.equal(p.audio.paused,true);
+  assert.equal(p.audio.plays.length,1);
+});
+
 test('Next and previous select adjacent programme items from their beginning at every playback position',async()=>{
   const p=await player();
+  p.audio.requireGesture=true;
   for(const elapsed of [0.05,5,100,200]) {
     p.audio.currentTime=elapsed;
     const before=p.api.currentLiveProgramIndexes.lobby;

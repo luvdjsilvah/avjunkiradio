@@ -3302,6 +3302,7 @@ function seekLiveAudio(seconds, requestId = livePlaybackRequest) {
       if (finished) return;
       finished = true;
       audio.removeEventListener("loadedmetadata", applySeek);
+      audio.removeEventListener("seeked", seekFinished);
       audio.removeEventListener("error", failed);
       window.clearTimeout(timeout);
       if (cancelLiveSeek === cancel) cancelLiveSeek = null;
@@ -3309,6 +3310,13 @@ function seekLiveAudio(seconds, requestId = livePlaybackRequest) {
     };
     const cancel = () => finish(false);
     const failed = () => finish(false);
+    let seekApplied = false;
+    const seekFinished = () => {
+      if (requestId !== livePlaybackRequest || source !== audio.getAttribute("src") || audio.error) {
+        return finish(false);
+      }
+      if (seekApplied && !audio.seeking) finish(true);
+    };
     const applySeek = () => {
       if (requestId !== livePlaybackRequest || source !== audio.getAttribute("src") || audio.error) {
         return finish(false);
@@ -3317,8 +3325,11 @@ function seekLiveAudio(seconds, requestId = livePlaybackRequest) {
       const target = typeof seconds === "function" ? seconds() : seconds;
       const maximum = Number.isFinite(audio.duration) ? Math.max(0, audio.duration - 0.02) : target;
       try {
+        seekApplied = true;
         audio.currentTime = Math.max(0, Math.min(target, maximum));
-        finish(true);
+        // Safari can finish an old recording while a new seek is settling.
+        // Keep the playback request pending until the media confirms the seek.
+        seekFinished();
       } catch (error) {
         console.warn("AV Junki Radio live seek warning:", error);
         finish(false);
@@ -3326,19 +3337,40 @@ function seekLiveAudio(seconds, requestId = livePlaybackRequest) {
     };
     cancelLiveSeek = cancel;
     audio.addEventListener("loadedmetadata", applySeek);
+    audio.addEventListener("seeked", seekFinished);
     audio.addEventListener("error", failed);
     timeout = window.setTimeout(failed, 10000);
     applySeek();
   });
 }
 
+function beginLivePlayback() {
+  const contextReady = resumeAudioContext();
+  // Play must be called synchronously from Listen, before any metadata/API wait.
+  // Keep the source silent until it reaches the requested station position.
+  if (radioSourceGain && audioContext) {
+    radioSourceGain.gain.cancelScheduledValues(audioContext.currentTime);
+    radioSourceGain.gain.setValueAtTime(0, audioContext.currentTime);
+  }
+  try {
+    const playing = audio.play();
+    // Observe rejection immediately, even if metadata is still being loaded.
+    return Promise.all([contextReady, playing]).then(
+      () => ({ error: null }), error => ({ error })
+    );
+  } catch (error) {
+    return Promise.resolve({ error });
+  }
+}
+
 async function syncToLiveStation(autoplay = false, leadMilliseconds = 0) {
   if (!isProgrammedStation(activeChannel) || !audio || (!autoplay && livePlaybackPending)) return;
   const channel = activeChannel;
+  if (!liveStationPrograms[channel]?.length) buildLiveStationProgram(channel);
   const syncStarted = Date.now();
   const position = getLiveStationPosition(channel, syncStarted + leadMilliseconds);
   if (!position) return;
-  if (autoplay) livePlaybackRequested = true;
+  livePlaybackRequested = autoplay;
 
   cancelLivePlayback();
   const item = position.item;
@@ -3350,16 +3382,16 @@ async function syncToLiveStation(autoplay = false, leadMilliseconds = 0) {
   if (item.type === "music" && Number.isInteger(item.playlistIndex)) {
     currentTrackIndex = item.playlistIndex;
   }
+  const playback = autoplay ? beginLivePlayback() : null;
   try {
-    // Resume Web Audio during the Listen gesture, before waiting for metadata.
-    if (autoplay) await resumeAudioContext();
     if (requestId !== livePlaybackRequest || activeChannel !== channel) return;
-    if (sourceChanged || audio.ended || Math.abs(audio.currentTime - position.offset) > LIVE_STATION_DRIFT_TOLERANCE) {
+    if (autoplay || sourceChanged || audio.ended || Math.abs(audio.currentTime - position.offset) > LIVE_STATION_DRIFT_TOLERANCE) {
       const sought = await seekLiveAudio(
         () => position.offset + (Date.now() - syncStarted) / 1000,
         requestId
       );
-      if (!sought || requestId !== livePlaybackRequest || activeChannel !== channel) return;
+      if (requestId !== livePlaybackRequest || activeChannel !== channel) return;
+      if (!sought) throw new Error("Station audio could not reach the live position.");
       // Metadata can arrive after a clock boundary. Join the correct item then.
       if (getLiveStationPosition(channel)?.programIndex !== position.programIndex) {
         livePlaybackPending = false;
@@ -3367,9 +3399,16 @@ async function syncToLiveStation(autoplay = false, leadMilliseconds = 0) {
       }
     }
     setMainstreamState(true);
-    if (autoplay) await audio.play();
+    if (playback) {
+      const result = await playback;
+      if (requestId !== livePlaybackRequest || activeChannel !== channel) return;
+      if (result.error) throw result.error;
+      startNextTrackFadeIn();
+    }
   } catch (error) {
     if (requestId === livePlaybackRequest) {
+      livePlaybackRequested = false;
+      audio.pause();
       console.error("AV Junki Radio live playback error:", error);
       setStatus("Press Listen to join the station.");
     }
@@ -3399,15 +3438,23 @@ async function playAdjacentStationItem(direction = 1) {
   livePlaybackPending = true;
   currentLiveProgramIndexes[channel] = nextIndex;
   if (item.type === "music" && Number.isInteger(item.playlistIndex)) currentTrackIndex = item.playlistIndex;
+  const playback = beginLivePlayback();
   try {
-    await resumeAudioContext();
     if (requestId !== livePlaybackRequest || activeChannel !== channel) return;
     // Natural endings and arrow controls start adjacent items at their true beginning.
-    if (!await seekLiveAudio(0, requestId)) return;
+    if (!await seekLiveAudio(0, requestId)) {
+      if (requestId === livePlaybackRequest) throw new Error("Station audio could not reach the track beginning.");
+      return;
+    }
     if (requestId !== livePlaybackRequest || activeChannel !== channel) return;
-    await audio.play();
+    const result = await playback;
+    if (requestId !== livePlaybackRequest || activeChannel !== channel) return;
+    if (result.error) throw result.error;
+    startNextTrackFadeIn();
   } catch (error) {
     if (requestId === livePlaybackRequest) {
+      livePlaybackRequested = false;
+      audio.pause();
       console.error("AV Junki Radio station advance error:", error);
       setStatus("Press Listen to continue the station.");
     }
@@ -4794,7 +4841,6 @@ function switchMusicChannel(
 
 if (previousTrack) {
   previousTrack.addEventListener("click", async () => {
-    await liveStationReady;
     if (isProgrammedStation(activeChannel)) {
       await playAdjacentStationItem(-1);
       return;
@@ -4805,7 +4851,6 @@ if (previousTrack) {
 
 if (nextTrack) {
   nextTrack.addEventListener("click", async () => {
-    await liveStationReady;
     playNextTrack();
   });
 }
@@ -4858,8 +4903,6 @@ if (
 
           }
 
-          await resumeAudioContext();
-          await liveStationReady;
           await syncToLiveStation(
             true
           );
@@ -5475,7 +5518,7 @@ function startNextTrackFadeIn() {
         showTrackVideo();
 
         if (
-          !videoPlaybackActive
+          !videoPlaybackActive && !livePlaybackPending
         ) {
 
           startNextTrackFadeIn();
@@ -5581,6 +5624,13 @@ function startNextTrackFadeIn() {
     audio.addEventListener(
       "ended",
       () => {
+
+        // Only a recording that actually finished during requested playback
+        // may advance. Paused previews and stale seek/load events must not skip.
+        if (
+          videoPlaybackActive || livePlaybackPending || audio.seeking ||
+          !audio.ended || (isProgrammedStation(activeChannel) && !livePlaybackRequested)
+        ) return;
 
         smoothTransitionPending =
           true;
