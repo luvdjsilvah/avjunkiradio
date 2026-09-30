@@ -43,10 +43,11 @@ function audioContext() {
   return {state:'running',currentTime:0,destination:{},createMediaElementSource:node,createGain:node,createBiquadFilter:node,createDynamicsCompressor:node,createAnalyser:()=>({...node(),frequencyBinCount:1024}),resume:async()=>{}};
 }
 const flush=async()=>{for(let i=0;i<8;i++) await new Promise(resolve=>setImmediate(resolve));};
-async function player({catalogDelay=false}={}) {
+async function player({catalogDelay=false,metadataDelay=false}={}) {
   let now=Date.parse('2026-09-30T03:00:00Z');
   class Clock extends Date { static now(){return now;} }
   const audio=new Audio();
+  audio.delayMetadata=metadataDelay;
   const elements=new Map(['play-pause','previous-track','next-track','player-track-title','player-artist','radio-status'].map(id=>[id,new Element()]));
   elements.set('radio-audio',audio);
   const gesture={active:false};
@@ -131,6 +132,21 @@ test('Listen works before catalogue requests finish and preserves the displayed 
   await p.finishCatalog();
   assert.equal(p.audio.src,source);
   assert.equal(p.audio.plays.length,count);
+});
+
+test('a loaded catalogue immediately replaces a stale paused preview even while its metadata is pending',async()=>{
+  const p=await player({catalogDelay:true,metadataDelay:true});
+  const oldSource=p.audio.src;
+  const catalog=p.finishCatalog(); await flush();
+  const position=p.api.getLiveStationPosition('lobby');
+  assert.notEqual(position.item.track.src,oldSource,'Fixture must move the live clock when saved assignments arrive');
+  assert.equal(p.audio.src,position.item.track.src,'The displayed title and source must follow the loaded station clock');
+  p.audio.readyState=1; await p.audio.dispatch('loadedmetadata');
+  await catalog;
+  const source=p.audio.src;
+  await p.click('play-pause');
+  assert.equal(p.audio.src,source,'Listen must start the updated displayed recording');
+  assert.equal(p.audio.paused,false);
 });
 
 test('Listen keeps a delayed seek pending and ignores an old end event until the seek settles',async()=>{

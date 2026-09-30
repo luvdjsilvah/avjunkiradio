@@ -3475,7 +3475,10 @@ async function refreshStationCatalog() {
     stationCatalogDirty = false;
     playlist = channelConfig[activeChannel].tracks;
     // Keep the current recording intact. New assignments affect subsequent items.
-    if (audio?.paused && !livePlaybackPending && !videoPlaybackActive) {
+    if (audio?.paused && !(livePlaybackPending && livePlaybackRequested) && !videoPlaybackActive) {
+      // A paused preview may still be waiting for the previous catalogue's
+      // metadata. Replace it now so Listen agrees with the displayed title.
+      cancelLivePlayback();
       await syncToLiveStation(false);
     }
   })();
