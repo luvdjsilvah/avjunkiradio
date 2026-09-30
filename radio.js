@@ -4895,20 +4895,12 @@ function switchMusicChannel(
 
 }
 
-if (previousTrack) {
-  previousTrack.addEventListener("click", async () => {
-    if (isProgrammedStation(activeChannel)) {
-      await playAdjacentStationItem(-1);
-      return;
-    }
-    loadTrack(currentTrackIndex - 1, true);
-  });
-}
-
-if (nextTrack) {
-  nextTrack.addEventListener("click", async () => {
-    playNextTrack();
-  });
+// Live radio follows the station programme. Listeners cannot skip or rewind;
+// the recording's ended event still advances the programme automatically.
+for (const control of [previousTrack, nextTrack]) {
+  if (!control) continue;
+  control.disabled = true;
+  control.setAttribute("aria-disabled", "true");
 }
 
   /* =========================================================

@@ -288,21 +288,37 @@ test('a second Listen click cancels delayed startup and later metadata cannot re
   assert.equal(p.audio.plays.length,1);
 });
 
-test('Next and previous select adjacent programme items from their beginning at every playback position',async()=>{
+test('listener arrows stay disabled and cannot change, restart, or start the station',async()=>{
+  const html=readFileSync(new URL('./index.html',import.meta.url),'utf8');
+  for(const id of ['previous-track','next-track']) {
+    const button=html.match(new RegExp(`<button\\s[^>]*id="${id}"[^>]*>`))?.[0];
+    assert.ok(button && /\sdisabled(?:\s|>)/.test(button),'Arrow must be disabled before the player loads');
+  }
   const p=await player();
   p.audio.requireGesture=true;
-  for(const elapsed of [0.05,5,100,200]) {
-    p.audio.currentTime=elapsed;
-    const before=p.api.currentLiveProgramIndexes.lobby;
-    const program=p.api.liveStationPrograms.lobby;
-    await p.click('next-track');
-    assert.equal(p.api.currentLiveProgramIndexes.lobby,(before+1)%program.length);
-    assert.equal(p.audio.src,program[(before+1)%program.length].track.src);
-    assert.equal(p.audio.currentTime,0);
-    await p.click('previous-track');
-    assert.equal(p.api.currentLiveProgramIndexes.lobby,before);
-    assert.equal(p.audio.src,program[before].track.src);
-    assert.equal(p.audio.currentTime,0);
+  for(const id of ['previous-track','next-track']) {
+    assert.equal(p.elements.get(id).disabled,true);
+    assert.equal(p.elements.get(id).getAttribute('aria-disabled'),'true');
+  }
+  for(const channel of ['lobby','hip-hop','rnb','house','reggae','gospel']) {
+    p.api.switchMusicChannel(channel); await flush();
+    for(const playing of [false,true]) {
+      if(playing && p.api.getLiveStationPosition(channel)) await p.click('play-pause');
+      for(const elapsed of [0.05,5,100,200]) {
+        p.audio.currentTime=elapsed;
+        const before={index:p.api.currentLiveProgramIndexes[channel],src:p.audio.src,paused:p.audio.paused,plays:p.audio.plays.length};
+        for(const id of ['next-track','previous-track']) {
+          // Dispatch directly as well: even a synthetic event must not skip.
+          await p.click(id);
+          assert.equal(p.api.currentLiveProgramIndexes[channel],before.index);
+          assert.equal(p.audio.src,before.src);
+          assert.equal(p.audio.currentTime,elapsed);
+          assert.equal(p.audio.paused,before.paused);
+          assert.equal(p.audio.plays.length,before.plays);
+        }
+      }
+    }
+    if(!p.audio.paused) await p.click('play-pause');
   }
 });
 
