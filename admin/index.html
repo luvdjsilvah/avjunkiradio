@@ -942,7 +942,7 @@ if (drop.r2_key) {
           const result = await response.json();
           if (!response.ok || !result.ok) throw new Error(result.error || "Could not save drop settings.");
           message.className = "message good";
-          message.textContent = "Stations and status saved.";
+          message.textContent = "Stations and status saved. The radio refreshes settings once a minute; enabled drops play after each four-song block.";
         } catch (error) {
           message.className = "message bad";
           message.textContent = error.message || String(error);
@@ -1244,7 +1244,7 @@ formData.append(
         await loadDrops();
         await checkApi();
         newDropMessage.className = "message good";
-        newDropMessage.textContent = "New drop saved. Enabled drops join the selected stations when listeners load the radio.";
+        newDropMessage.textContent = "New drop saved with its stations and status. No extra Save is needed. The radio refreshes rotation once a minute; enabled drops play after each four-song block.";
       } catch (error) {
         newDropMessage.className = "message bad";
         newDropMessage.textContent = error instanceof Error ? error.message : String(error);
