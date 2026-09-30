@@ -149,6 +149,19 @@ test('a loaded catalogue immediately replaces a stale paused preview even while 
   assert.equal(p.audio.paused,false);
 });
 
+test('catalogue arrival during the first Listen seek does not replace the recording selected by the click',async()=>{
+  const p=await player({catalogDelay:true,metadataDelay:true});
+  p.audio.requireGesture=true;
+  const source=p.audio.src;
+  const listen=p.elements.get('play-pause').dispatch('click'); await flush();
+  await p.finishCatalog();
+  assert.equal(p.audio.src,source);
+  p.audio.delayMetadata=false; p.audio.readyState=1;
+  await p.audio.dispatch('loadedmetadata'); await listen; await flush();
+  assert.equal(p.audio.src,source,'A catalogue revision must not be mistaken for a natural clock boundary');
+  assert.equal(p.audio.paused,false);
+});
+
 test('Listen keeps a delayed seek pending and ignores an old end event until the seek settles',async()=>{
   const p=await player();
   p.audio.requireGesture=true; p.audio.delayMetadata=true; p.audio.delaySeek=true;

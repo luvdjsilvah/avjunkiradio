@@ -3367,6 +3367,7 @@ async function syncToLiveStation(autoplay = false, leadMilliseconds = 0) {
   if (!isProgrammedStation(activeChannel) || !audio || (!autoplay && livePlaybackPending)) return;
   const channel = activeChannel;
   if (!liveStationPrograms[channel]?.length) buildLiveStationProgram(channel);
+  const program = liveStationPrograms[channel];
   const syncStarted = Date.now();
   const position = getLiveStationPosition(channel, syncStarted + leadMilliseconds);
   if (!position) return;
@@ -3392,8 +3393,12 @@ async function syncToLiveStation(autoplay = false, leadMilliseconds = 0) {
       );
       if (requestId !== livePlaybackRequest || activeChannel !== channel) return;
       if (!sought) throw new Error("Station audio could not reach the live position.");
-      // Metadata can arrive after a clock boundary. Join the correct item then.
-      if (getLiveStationPosition(channel)?.programIndex !== position.programIndex) {
+      // Metadata can arrive after a clock boundary. A saved catalogue revision
+      // must preserve the recording selected by Listen, just like other updates.
+      if (
+        liveStationPrograms[channel] === program &&
+        getLiveStationPosition(channel)?.programIndex !== position.programIndex
+      ) {
         livePlaybackPending = false;
         return syncToLiveStation(autoplay, leadMilliseconds);
       }
