@@ -5482,6 +5482,10 @@ setMainstreamState(
   let smoothTransitionPending =
     false;
 
+  // Temporary diagnostic flag for the Hip Hop transition test.
+  let hipHopEndDiagnosticLogged =
+    false;
+
 
   function rampRadioGain(
     target,
@@ -5567,7 +5571,12 @@ function startNextTrackFadeIn() {
     now
   );
 
-  if (FULL_RECORDING_STATION_CHANNELS.has(activeChannel)) {
+  if (activeChannel === "hip-hop") {
+    // Controlled diagnostic: Hip Hop gets the recording from sample zero at
+    // full gain. This isolates the previous 20 ms opening ramp as a possible
+    // cause of shaved kicks, consonants or first beats.
+    gain.setValueAtTime(1, now);
+  } else if (FULL_RECORDING_STATION_CHANNELS.has(activeChannel)) {
     gain.setValueAtTime(0, now);
     gain.linearRampToValueAtTime(1, now + GENRE_TRACK_START_FADE_SECONDS);
   } else {
@@ -5590,6 +5599,10 @@ function startNextTrackFadeIn() {
       () => {
 
         showTrackVideo();
+
+        if (activeChannel === "hip-hop") {
+          hipHopEndDiagnosticLogged = false;
+        }
 
         if (
           !videoPlaybackActive && !livePlaybackPending
@@ -5650,6 +5663,29 @@ function startNextTrackFadeIn() {
 
 
         if (
+          activeChannel === "hip-hop" &&
+          !audio.paused &&
+          Number.isFinite(audio.duration) &&
+          audio.duration > 0
+        ) {
+          const diagnosticRemaining = audio.duration - audio.currentTime;
+          if (
+            !hipHopEndDiagnosticLogged &&
+            diagnosticRemaining >= 0 &&
+            diagnosticRemaining <= 1
+          ) {
+            hipHopEndDiagnosticLogged = true;
+            console.info("AV Junki Radio Hip Hop end diagnostic", {
+              src: audio.currentSrc || audio.getAttribute("src"),
+              currentTime: audio.currentTime,
+              duration: audio.duration,
+              remaining: diagnosticRemaining,
+              readyState: audio.readyState
+            });
+          }
+        }
+
+        if (
           videoPlaybackActive ||
           audio.paused ||
           FULL_RECORDING_STATION_CHANNELS.has(activeChannel) ||
@@ -5699,6 +5735,16 @@ function startNextTrackFadeIn() {
     audio.addEventListener(
       "ended",
       () => {
+
+        if (activeChannel === "hip-hop") {
+          console.info("AV Junki Radio Hip Hop ended diagnostic", {
+            src: audio.currentSrc || audio.getAttribute("src"),
+            currentTime: audio.currentTime,
+            duration: audio.duration,
+            ended: audio.ended,
+            readyState: audio.readyState
+          });
+        }
 
         // Only a recording that actually finished during requested playback
         // may advance. Paused previews and stale seek/load events must not skip.
