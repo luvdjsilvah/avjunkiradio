@@ -3353,32 +3353,51 @@ function seekLiveAudio(seconds, requestId = livePlaybackRequest, waitForData = f
   });
 }
 
-function beginLivePlayback({ startAtBeginning = false } = {}) {
+function beginLivePlayback({
+  startAtBeginning = false,
+  fadeInSeconds = 0
+} = {}) {
   const contextReady = resumeAudioContext();
   const requestId = livePlaybackRequest;
   const source = audio.getAttribute("src");
-  // Play must be called synchronously from Listen, before any metadata/API wait.
-  // Keep the source silent until it reaches the requested station position.
+
+  // For automatic track starts, set the intended opening level BEFORE play().
+  // This makes the fade independent of Safari currentTime/event timing.
   if (radioSourceGain && audioContext) {
-    radioSourceGain.gain.cancelScheduledValues(audioContext.currentTime);
-    radioSourceGain.gain.setValueAtTime(
-      startAtBeginning ? 1 : 0,
-      audioContext.currentTime
+    const gain = radioSourceGain.gain;
+    const now = audioContext.currentTime;
+    gain.cancelScheduledValues(now);
+    gain.setValueAtTime(
+      startAtBeginning && fadeInSeconds > 0 ? 0 : (startAtBeginning ? 1 : 0),
+      now
     );
   }
+
   try {
     const playing = audio.play();
-    // Observe rejection immediately, even if metadata is still being loaded.
     return Promise.all([contextReady, playing]).then(
       () => {
-        // Start the gain ramp when playback actually begins, so buffering cannot
-        // use up the ramp before the listener hears the opening.
-        if (startAtBeginning && requestId === livePlaybackRequest &&
-            source === audio.getAttribute("src") && !audio.paused) {
-          startNextTrackFadeIn();
+        if (
+          startAtBeginning &&
+          fadeInSeconds > 0 &&
+          requestId === livePlaybackRequest &&
+          source === audio.getAttribute("src") &&
+          !audio.paused &&
+          radioSourceGain &&
+          audioContext
+        ) {
+          const gain = radioSourceGain.gain;
+          const now = audioContext.currentTime;
+          gain.cancelScheduledValues(now);
+          gain.setValueAtTime(0, now);
+          gain.linearRampToValueAtTime(
+            1,
+            now + fadeInSeconds
+          );
         }
         return { error: null };
-      }, error => ({ error })
+      },
+      error => ({ error })
     );
   } catch (error) {
     return Promise.resolve({ error });
@@ -3510,7 +3529,17 @@ async function playAdjacentStationItem(direction = 1) {
       return;
     }
     if (requestId !== livePlaybackRequest || activeChannel !== channel) return;
-    const result = await (playback || beginLivePlayback({ startAtBeginning: true }));
+    const fadeInSeconds =
+      channel === "hip-hop" && item.type === "music"
+        ? HIP_HOP_MUSIC_FADE_IN_SECONDS
+        : 0;
+    const result = await (
+      playback ||
+      beginLivePlayback({
+        startAtBeginning: true,
+        fadeInSeconds
+      })
+    );
     if (requestId !== livePlaybackRequest || activeChannel !== channel) return;
     if (result.error) throw result.error;
     if (!preserveOpening) startNextTrackFadeIn();
@@ -5464,9 +5493,13 @@ setMainstreamState(
   const HARDER_TRACK_END_FADE_SECONDS =
     0.75;
 
-  // Full-recording genre stations must preserve the complete opening.
-  // Automatic transitions wait for playable data and start at time 0,
-  // so no gain fade is applied to the recording itself.
+  // Hip Hop masters can begin at full energy. Apply one deterministic
+  // player-level entrance to MUSIC only; drops/commercials remain untouched.
+  const HIP_HOP_MUSIC_FADE_IN_SECONDS =
+    0.45;
+
+  // Other full-recording genre stations preserve the complete opening.
+  // Automatic transitions wait for playable data and start at time 0.
 
   function getTrackEndFadeSeconds() {
     return (
@@ -5573,8 +5606,8 @@ function startNextTrackFadeIn() {
     now
   );
 
-  // Do not attenuate the opening of complete genre recordings.
-  // The transition path has already waited for metadata/canplay and seeked to 0.
+  // Default path restores full gain. Hip Hop automatic music fades are
+  // scheduled directly inside beginLivePlayback so they cannot miss their trigger.
   gain.setValueAtTime(1, now);
 
   smoothTransitionPending =
