@@ -738,9 +738,162 @@ async function handleMediaRoutes(request, env, pathname) {
   }
   return null;
 }
+const STATION_TOPICS = new Set(["General enquiry", "Listener feedback", "Technical help", "Artist submission", "Podcast pitch", "Event submission", "Advertising", "Sponsorship", "Merchandise", "Community"]);
+const STATION_ORIGINS = new Set(["https://avjunkiradio.com", "https://www.avjunkiradio.com"]);
+const stationSchemas = new WeakMap();
+
+function stationResponse(request, data, status = 200) {
+  const origin = request.headers.get("Origin");
+  return new Response(JSON.stringify(data), {status,headers:{
+    "Content-Type":"application/json; charset=utf-8",
+    "Cache-Control":"no-store",
+    "Access-Control-Allow-Origin":STATION_ORIGINS.has(origin) ? origin : "https://avjunkiradio.com",
+    "Vary":"Origin",
+    "X-Content-Type-Options":"nosniff"
+  }});
+}
+
+async function ensureStationMessages(db) {
+  if (!stationSchemas.has(db)) {
+    const ready = db.batch([
+      db.prepare(`CREATE TABLE IF NOT EXISTS station_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        submission_id TEXT NOT NULL UNIQUE,
+        reference TEXT NOT NULL UNIQUE,
+        purpose TEXT NOT NULL,
+        topic TEXT NOT NULL,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        message TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new','read','archived')),
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`),
+      db.prepare(`CREATE TABLE IF NOT EXISTS station_message_limits (
+        bucket INTEGER NOT NULL,
+        sender_hash TEXT NOT NULL,
+        count INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY (bucket, sender_hash)
+      )`)
+    ]).catch(error => {stationSchemas.delete(db);throw error;});
+    stationSchemas.set(db,ready);
+  }
+  await stationSchemas.get(db);
+}
+
+async function stationBody(request) {
+  if (!request.headers.get("Content-Type")?.toLowerCase().startsWith("application/json")) return {error:"Send a JSON message.",status:415};
+  if (Number(request.headers.get("Content-Length")) > 16_384) return {error:"The message is too long.",status:413};
+  const reader = request.body?.getReader();
+  if (!reader) return {error:"Supply a message.",status:400};
+  const chunks = [];
+  let length = 0;
+  while (true) {
+    const {value,done} = await reader.read();
+    if (done) break;
+    length += value.byteLength;
+    if (length > 16_384) {await reader.cancel();return {error:"The message is too long.",status:413};}
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {bytes.set(chunk,offset);offset += chunk.byteLength;}
+  try {
+    const value = JSON.parse(new TextDecoder().decode(bytes));
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid body");
+    return {value};
+  } catch {return {error:"Supply a valid JSON message.",status:400};}
+}
+
+async function handleStationRoutes(request, env) {
+  const parsed = new URL(request.url), path = parsed.pathname, method = request.method;
+  const item = path.match(/^\/api\/station\/inbox\/(\d+)$/);
+  const publicMessage = path === "/api/station/messages";
+  const inbox = path === "/api/station/inbox";
+  const respond = (data,status) => stationResponse(request,data,status);
+  if (!publicMessage && !inbox && !item) return respond({ok:false,error:"Station route not found."},404);
+  if (method === "OPTIONS") {
+    const headers = new Headers(stationResponse(request,{}).headers);
+    headers.set("Access-Control-Allow-Methods","GET, POST, PATCH, OPTIONS");
+    headers.set("Access-Control-Allow-Headers","Content-Type, Authorization");
+    headers.set("Access-Control-Max-Age","600");
+    return new Response(null,{status:204,headers});
+  }
+  if (!(publicMessage && method === "POST" || inbox && method === "GET" || item && method === "PATCH")) return respond({ok:false,error:"Method not allowed."},405);
+  if (!publicMessage) {
+    const rejected = await authorizeWrite(request,env);
+    if (rejected) {
+      const detail = await rejected.json();
+      return respond(detail,rejected.status);
+    }
+  } else if (!STATION_ORIGINS.has(request.headers.get("Origin"))) {
+    return respond({ok:false,error:"Send your enquiry from avjunkiradio.com."},403);
+  }
+  let input;
+  if (method !== "GET") {
+    const body = await stationBody(request);
+    if (body.error) return respond({ok:false,error:body.error},body.status);
+    input = body.value;
+  }
+  if (publicMessage) {
+    // Quietly discard the hidden field used by form-filling bots.
+    if (typeof input.website === "string" && input.website.trim()) return respond({ok:true},202);
+    const validText = (value,min,max) => typeof value === "string" && value.trim().length >= min && value.trim().length <= max && !/[\u0000]/.test(value);
+    if (!validText(input.name,2,80) || !validText(input.email,3,254) || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(input.email.trim()) ||
+        !validText(input.message,10,3000) || !STATION_TOPICS.has(input.topic) || !["contact","inquiry","advertise"].includes(input.purpose) || input.consent !== true ||
+        typeof input.submissionId !== "string" || !/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(input.submissionId)) {
+      return respond({ok:false,error:"Supply your name, a valid email, a message of 10–3000 characters, a topic and permission to reply."},400);
+    }
+  } else if (item && !["new","read","archived"].includes(input.status)) {
+    return respond({ok:false,error:"Choose new, read or archived."},400);
+  }
+  if (!env.DB) return respond({ok:false,error:"The station inbox is unavailable. Please try again later."},503);
+  await ensureStationMessages(env.DB);
+  if (publicMessage) {
+    const previous = await env.DB.prepare("SELECT reference FROM station_messages WHERE submission_id = ?").bind(input.submissionId).first();
+    if (previous) return respond({ok:true,reference:previous.reference},202);
+    const bucket = Math.floor(Date.now() / 3_600_000);
+    const sender = `${env.ADMIN_API_TOKEN || "AV-Junki-station"}:${bucket}:${request.headers.get("CF-Connecting-IP") || "unknown"}`;
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(sender)));
+    const hash = Array.from(digest,byte => byte.toString(16).padStart(2,"0")).join("");
+    const rate = await env.DB.prepare(`INSERT INTO station_message_limits (bucket, sender_hash, count) VALUES (?, ?, 1)
+      ON CONFLICT (bucket, sender_hash) DO UPDATE SET count = count + 1 RETURNING count`).bind(bucket,hash).first();
+    if (Number(rate?.count) > 5) return respond({ok:false,error:"Too many messages were sent from this connection. Please try again in an hour."},429);
+    const reference = `AVJ-${crypto.randomUUID().replaceAll("-","").slice(0,12).toUpperCase()}`;
+    await env.DB.prepare(`INSERT OR IGNORE INTO station_messages (submission_id, reference, purpose, topic, name, email, message)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`).bind(input.submissionId,reference,input.purpose,input.topic,input.name.trim(),input.email.trim(),input.message.trim()).run();
+    await env.DB.prepare("DELETE FROM station_message_limits WHERE bucket < ?").bind(bucket-24).run();
+    const saved = await env.DB.prepare("SELECT reference FROM station_messages WHERE submission_id = ?").bind(input.submissionId).first();
+    return respond({ok:true,reference:saved.reference},202);
+  }
+  if (inbox) {
+    const status = parsed.searchParams.get("status") || "all";
+    const before = parsed.searchParams.get("before");
+    if (!["all","new","read","archived"].includes(status) || before !== null && !/^\d{1,15}$/.test(before)) return respond({ok:false,error:"Invalid inbox filter."},400);
+    const conditions = [], values = [];
+    if (status !== "all") {conditions.push("status = ?");values.push(status);}
+    if (before !== null) {conditions.push("id < ?");values.push(Number(before));}
+    const messages = await env.DB.prepare(`SELECT id, reference, purpose, topic, name, email, message, status, created_at FROM station_messages
+      ${conditions.length ? `WHERE ${conditions.join(" AND ")}` : ""} ORDER BY id DESC LIMIT 51`).bind(...values).all();
+    const totals = await env.DB.prepare("SELECT status, COUNT(*) AS total FROM station_messages GROUP BY status").all();
+    const rows = messages.results || [];
+    return respond({ok:true,messages:rows.slice(0,50),nextBefore:rows.length > 50 ? rows[49].id : null,totals:Object.fromEntries((totals.results || []).map(row => [row.status,Number(row.total)]))});
+  }
+  const saved = await env.DB.prepare("SELECT id FROM station_messages WHERE id = ?").bind(Number(item[1])).first();
+  if (!saved) return respond({ok:false,error:"Message not found."},404);
+  await env.DB.prepare("UPDATE station_messages SET status = ? WHERE id = ?").bind(input.status,Number(item[1])).run();
+  return respond({ok:true});
+}
+
 export default {
   async fetch(request, env) {
     try {
+      if (new URL(request.url).pathname.startsWith("/api/station/")) {
+        try {return await handleStationRoutes(request, env);}
+        catch (error) {
+          console.error("AV Junki Radio station inbox unavailable:", error instanceof Error ? error.name : "Unknown error");
+          return stationResponse(request, {ok:false,error:"The station inbox is unavailable. Please try again later."}, 503);
+        }
+      }
       // Information feeds are read-only and never touch the radio DB or media.
       if (new URL(request.url).pathname.startsWith("/api/info/")) {
         return await fetchInformation(request);

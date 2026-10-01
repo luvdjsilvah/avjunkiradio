@@ -351,6 +351,9 @@
   <button class="admin-tab" data-section="video">
     Video
   </button>
+  <button class="admin-tab" data-section="inbox">
+    Station Inbox
+  </button>
 </div>
 
 <section class="admin-section active" id="section-drops">
@@ -555,6 +558,23 @@
   <div class="drop-grid" id="videoItems"></div>
 </section>
 
+<section class="admin-section" id="section-inbox">
+  <h2 class="section-title">Station Inbox</h2>
+  <p style="color:#bfae9f;margin-bottom:16px">Contact, Inquiry and Advertise messages from the public station. Use your admin key above to read them.</p>
+  <div class="music-upload-panel">
+    <label class="form-field" for="stationInboxFilter">Show
+      <select id="stationInboxFilter"><option value="all">All messages</option><option value="new">New</option><option value="read">Read</option><option value="archived">Archived</option></select>
+    </label>
+    <button class="button upload-button" id="stationInboxRefresh" type="button">Refresh inbox</button>
+    <div class="message" id="stationInboxStatus" role="status" aria-live="polite"></div>
+  </div>
+  <div class="drop-grid" id="stationInboxItems"></div>
+  <div style="display:flex;gap:10px;margin-top:16px">
+    <button class="button" id="stationInboxNewer" type="button" disabled>Newer messages</button>
+    <button class="button" id="stationInboxOlder" type="button" disabled>Older messages</button>
+  </div>
+</section>
+
     <footer>
       AV Junki Radio • Internal Administration
     </footer>
@@ -575,11 +595,12 @@
       adminTokenMessage.textContent = adminApiToken
         ? "Admin key ready for this tab." : "Enter your admin key first.";
       adminTokenMessage.className = `message ${adminApiToken ? "good" : "bad"}`;
+      window.dispatchEvent(new Event("station-admin-key-ready"));
     });
 
     async function adminFetch(url, options = {}) {
-      if ((options.method || "GET").toUpperCase() === "GET") return fetch(url, options);
-      if (!adminApiToken) throw new Error("Enter your admin API key above before saving or uploading.");
+      if ((options.method || "GET").toUpperCase() === "GET" && !new URL(url).pathname.startsWith("/api/station/inbox")) return fetch(url, options);
+      if (!adminApiToken) throw new Error("Enter your admin API key above before opening the inbox, saving or uploading.");
       const headers = new Headers(options.headers || {});
       headers.set("Authorization", `Bearer ${adminApiToken}`);
       const response = await fetch(url, { ...options, headers });
@@ -1862,5 +1883,6 @@ videoUpload.addEventListener("click", async () => {
 loadVideos();
 
 </script>
+<script src="inbox.js?v=1"></script>
 </body>
 </html>

@@ -20,6 +20,7 @@
     rel="stylesheet"
     href="radio.css?v=16"
   />
+  <link rel="stylesheet" href="station-pages.css?v=1" />
 </head>
 
 
@@ -71,7 +72,8 @@
         <a
           id="nav-home"
           class="nav-hotspot"
-          href="index.html"
+          href="#home"
+          data-station-page="home"
           aria-label="Home"
         >
           Home
@@ -81,7 +83,8 @@
         <a
           id="nav-radio"
           class="nav-hotspot"
-          href="index.html"
+          href="#radio"
+          data-station-page="radio"
           aria-label="Radio"
         >
           Radio
@@ -93,6 +96,7 @@
           class="nav-hotspot"
           type="button"
           data-screen="podcasts"
+          data-station-page="podcasts"
           aria-label="Podcasts"
         >
           Podcasts
@@ -104,6 +108,7 @@
           class="nav-hotspot"
           type="button"
           data-screen="events"
+          data-station-page="events"
           aria-label="Events"
         >
           Events
@@ -115,6 +120,7 @@
           class="nav-hotspot"
           type="button"
           data-screen="news"
+          data-station-page="news"
           aria-label="News"
         >
           News
@@ -126,6 +132,7 @@
           class="nav-hotspot"
           type="button"
           data-screen="shop"
+          data-station-page="shop"
           aria-label="Shop"
         >
           Shop
@@ -137,6 +144,7 @@
           class="nav-hotspot"
           type="button"
           data-screen="community"
+          data-station-page="community"
           aria-label="Community"
         >
           Community
@@ -148,6 +156,7 @@
           class="nav-hotspot"
           type="button"
           data-screen="advertise"
+          data-station-page="advertise"
           aria-label="Advertise"
         >
           Advertise
@@ -159,6 +168,7 @@
           class="nav-hotspot"
           type="button"
           data-screen="contact"
+          data-station-page="contact"
           aria-label="Contact"
         >
           Contact
@@ -170,6 +180,7 @@
           class="nav-hotspot"
           type="button"
           data-screen="search"
+          data-station-page="search"
           aria-label="Search"
         >
           Search
@@ -181,6 +192,7 @@
           class="nav-hotspot"
           type="button"
           data-screen="inquiry"
+          data-station-page="inquiry"
           aria-label="Inquiry"
         >
           Inquiry
@@ -192,6 +204,7 @@
           class="nav-hotspot"
           type="button"
           data-screen="about"
+          data-station-page="about"
           aria-label="About"
         >
           About
@@ -286,6 +299,16 @@
   </div>
 </div>
         </div>
+        <section id="station-pages" hidden aria-labelledby="station-page-title">
+          <header class="station-page-header">
+            <div>
+              <span class="station-eyebrow">AV JUNKI RADIO</span>
+              <h1 id="station-page-title" tabindex="-1"></h1>
+            </div>
+            <button id="station-pages-close" type="button" aria-label="Back to the studio">Back to studio <span aria-hidden="true">×</span></button>
+          </header>
+          <div id="station-page-body"></div>
+        </section>
       </section>
 
 
@@ -819,8 +842,9 @@
        RADIO JAVASCRIPT
   ========================================================== -->
 
-<script src="radio.js?v=26"></script>
+<script src="radio.js?v=27"></script>
 <script src="info-center.js?v=2" defer></script>
+<script src="station-pages.js?v=1" defer></script>
 
 </body>
 

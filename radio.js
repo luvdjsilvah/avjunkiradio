@@ -5193,6 +5193,8 @@ if (
         "click",
         () => {
 
+          if (button.dataset.stationPage) return;
+
           const screen =
             button.dataset.screen ||
             "";

@@ -1,0 +1,96 @@
+/* The navigation lives inside the existing television. Studio geometry stays in radio.css. */
+#station-pages[hidden] { display: none; }
+#station-pages {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #21160f, #100c09 65%);
+  color: #f8eee3;
+  border: 1px solid #81603b;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.5;
+  isolation: isolate;
+  pointer-events: auto;
+  clip-path: polygon(0% 0%, 10% 1.2%, 20% 2.4%, 30% 3.3%, 40% 3.9%, 50% 4.2%, 60% 3.9%, 70% 3.3%, 80% 2.4%, 90% 1.2%, 100% 0%, 100% 100%, 90% 98.8%, 80% 97.6%, 70% 96.7%, 60% 96.1%, 50% 95.8%, 40% 96.1%, 30% 96.7%, 20% 97.6%, 10% 98.8%, 0% 100%);
+}
+#station-pages .station-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 12px 18px 10px;
+  border-bottom: 1px solid #5c4129;
+}
+#station-pages .station-eyebrow { color: #dfb87a; font-size: 10px; letter-spacing: 2px; }
+#station-pages h1 { color: #fff2dd; font-size: 23px; line-height: 1.2; font-weight: 600; }
+#station-pages h2 { font-size: 18px; line-height: 1.3; margin-bottom: 6px; }
+#station-pages h3 { font-size: 15px; margin-bottom: 4px; }
+#station-pages p + p { margin-top: 10px; }
+#station-page-body { min-height: 0; padding: 15px 18px 28px; overflow: auto; overscroll-behavior: contain; scrollbar-color: #947045 #1c140d; scrollbar-width: thin; }
+#station-pages .station-intro { color: #e5d8c9; margin-bottom: 13px; }
+#station-pages .station-muted, #station-pages small { color: #bea993; }
+#station-pages small { font-size: 12px; }
+#station-pages .station-tag { color: #dfb87a; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 5px; display: block; }
+#station-pages .station-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+#station-pages .station-card { min-width: 0; padding: 12px; border: 1px solid #5c4129; border-radius: 7px; background: #261b13; overflow-wrap: anywhere; }
+#station-pages .station-card p { font-size: 13px; color: #d6c4b0; }
+#station-pages .station-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+#station-pages button, #station-pages .station-link-button {
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid #86643f;
+  border-radius: 5px;
+  background: #342416;
+  color: #ffe7bd;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  text-decoration: none;
+  line-height: 1.4;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+#station-pages button:hover, #station-pages .station-link-button:hover { background: #50371f; }
+#station-pages button:disabled { cursor: wait; opacity: .65; }
+#station-pages .station-primary { background: #dfb87a; color: #20140b; border-color: #dfb87a; font-weight: 700; }
+#station-pages .station-primary:hover { background: #f1cd94; }
+#station-pages a { color: #f5d49d; text-underline-offset: 3px; }
+#station-pages :is(a, button, input, textarea, select):focus-visible { outline: 2px solid #f6d49a; outline-offset: 2px; }
+#station-pages #station-page-title:focus { outline: none; }
+#station-pages #station-pages-close { white-space: nowrap; background: transparent; border-color: #705234; font-size: 11px; }
+#station-pages #station-pages-close span { font-size: 20px; line-height: 1; }
+#station-pages .station-now { font-size: 24px; line-height: 1.25; margin: 3px 0; overflow-wrap: anywhere; }
+#station-pages .station-section { margin-top: 15px; }
+#station-pages .station-list { list-style: none; display: grid; gap: 9px; }
+#station-pages .station-list li { border-bottom: 1px solid #513b28; padding-bottom: 10px; }
+#station-pages .station-list a { font-size: 15px; }
+#station-pages .station-list small { display: block; margin-top: 5px; }
+#station-pages .station-form { display: grid; gap: 10px; margin-top: 12px; }
+#station-pages .station-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#station-pages label { display: block; color: #e2ccad; font-size: 12px; }
+#station-pages :is(input:not([type=checkbox]), textarea, select) { display: block; width: 100%; margin-top: 4px; padding: 8px 10px; border: 1px solid #705234; border-radius: 4px; background: #140e0a; color: #fff2de; font: inherit; font-size: 13px; }
+#station-pages textarea { min-height: 75px; resize: vertical; }
+#station-pages .station-consent { display: flex; gap: 8px; align-items: flex-start; color: #c7b39a; }
+#station-pages input[type=checkbox] { flex-shrink: 0; margin-top: 2px; accent-color: #dfb87a; }
+#station-pages .station-honeypot { display: none; }
+#station-pages .station-form-status { color: #dfb87a; overflow-wrap: anywhere; }
+#station-pages .station-error { color: #ffb4a7; }
+#station-pages .station-success { color: #b8d5a5; }
+#station-pages .station-search-label { margin-bottom: 12px; }
+#station-pages .station-search-result { display: block; width: 100%; text-align: left; margin-top: 7px; }
+#station-pages .station-search-result span { display: block; }
+#station-pages .station-search-result small { font-size: 11px; }
+#station-pages .station-search-result.station-library-entry { cursor: default; padding: 10px 12px; border: 1px solid #5c4129; border-radius: 5px; }
+@media (max-width: 700px) {
+  #station-pages .station-grid, #station-pages .station-form-row { grid-template-columns: 1fr; }
+  #station-pages .station-page-header { padding: 9px 12px; }
+  #station-page-body { padding: 12px 12px 28px; }
+  #station-pages h1 { font-size: 20px; }
+  #station-pages #station-pages-close { font-size: 10px; padding: 6px 8px; }
+}
