@@ -2316,7 +2316,8 @@ async function loadMusicFromApi() {
         src,
         video: "",
         preset: "music",
-        adminMusicId: item.id
+        adminMusicId: item.id,
+        originalFilename: item.original_filename || ""
       };
       liveDurationSeconds[src] = duration;
       channelConfig[channel].tracks.push(track);
@@ -3492,6 +3493,10 @@ async function playAdjacentStationItem(direction = 1) {
   const nextIndex = (index + direction + program.length) % program.length;
   const item = program[nextIndex];
   const preserveOpening = FULL_RECORDING_STATION_CHANNELS.has(channel);
+  hipHopSoftStartSource =
+    channel === "hip-hop" && isDoMeTrack(item.track)
+      ? item.track.src
+      : "";
   window.setRadioTrack(item.track);
   const requestId = ++livePlaybackRequest;
   livePlaybackPending = true;
@@ -5466,6 +5471,17 @@ setMainstreamState(
   const GENRE_TRACK_START_FADE_SECONDS =
     0.02;
 
+  // Controlled Hip Hop handoff: Do Me already has a short silent lead-in, so
+  // ease it up without muting its actual first sample.
+  const DO_ME_START_GAIN =
+    0.18;
+
+  const DO_ME_START_FADE_SECONDS =
+    0.12;
+
+  let hipHopSoftStartSource =
+    "";
+
   function getTrackEndFadeSeconds() {
     return (
       activeChannel === "hip-hop" ||
@@ -5480,9 +5496,6 @@ setMainstreamState(
     false;
 
   let smoothTransitionPending =
-    false;
-
-  let hipHopEndDiagnosticLogged =
     false;
 
   // Temporary diagnostic flag for the Hip Hop transition test.
@@ -5548,6 +5561,12 @@ setMainstreamState(
   }
 
 
+function isDoMeTrack(track = {}) {
+  const filename = String(track.originalFilename || "").toLowerCase();
+  const title = String(track.title || "").trim().toLowerCase();
+  return title === "do me" || filename.startsWith("do_me_by_dj_silvah");
+}
+
 function startNextTrackFadeIn() {
 
   if (
@@ -5575,10 +5594,20 @@ function startNextTrackFadeIn() {
   );
 
   if (activeChannel === "hip-hop") {
-    // Controlled diagnostic: Hip Hop gets the recording from sample zero at
-    // full gain. This isolates the previous 20 ms opening ramp as a possible
-    // cause of shaved kicks, consonants or first beats.
-    gain.setValueAtTime(1, now);
+    const source = audio?.getAttribute("src") || "";
+    const softenDoMe =
+      hipHopSoftStartSource &&
+      source === hipHopSoftStartSource &&
+      audio.currentTime <= 0.05;
+
+    if (softenDoMe) {
+      gain.setValueAtTime(DO_ME_START_GAIN, now);
+      gain.linearRampToValueAtTime(1, now + DO_ME_START_FADE_SECONDS);
+    } else {
+      gain.setValueAtTime(1, now);
+    }
+
+    hipHopSoftStartSource = "";
   } else if (FULL_RECORDING_STATION_CHANNELS.has(activeChannel)) {
     gain.setValueAtTime(0, now);
     gain.linearRampToValueAtTime(1, now + GENRE_TRACK_START_FADE_SECONDS);
@@ -5664,29 +5693,6 @@ function startNextTrackFadeIn() {
 
         }
 
-
-        if (
-          activeChannel === "hip-hop" &&
-          !audio.paused &&
-          Number.isFinite(audio.duration) &&
-          audio.duration > 0
-        ) {
-          const diagnosticRemaining = audio.duration - audio.currentTime;
-          if (
-            !hipHopEndDiagnosticLogged &&
-            diagnosticRemaining >= 0 &&
-            diagnosticRemaining <= 1
-          ) {
-            hipHopEndDiagnosticLogged = true;
-            console.info("AV Junki Radio Hip Hop end diagnostic", {
-              src: audio.currentSrc || audio.getAttribute("src"),
-              currentTime: audio.currentTime,
-              duration: audio.duration,
-              remaining: diagnosticRemaining,
-              readyState: audio.readyState
-            });
-          }
-        }
 
         if (
           activeChannel === "hip-hop" &&
