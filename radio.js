@@ -5482,6 +5482,9 @@ setMainstreamState(
   let smoothTransitionPending =
     false;
 
+  let hipHopEndDiagnosticLogged =
+    false;
+
   // Temporary diagnostic flag for the Hip Hop transition test.
   let hipHopEndDiagnosticLogged =
     false;
@@ -5661,6 +5664,29 @@ function startNextTrackFadeIn() {
 
         }
 
+
+        if (
+          activeChannel === "hip-hop" &&
+          !audio.paused &&
+          Number.isFinite(audio.duration) &&
+          audio.duration > 0
+        ) {
+          const diagnosticRemaining = audio.duration - audio.currentTime;
+          if (
+            !hipHopEndDiagnosticLogged &&
+            diagnosticRemaining >= 0 &&
+            diagnosticRemaining <= 1
+          ) {
+            hipHopEndDiagnosticLogged = true;
+            console.info("AV Junki Radio Hip Hop end diagnostic", {
+              src: audio.currentSrc || audio.getAttribute("src"),
+              currentTime: audio.currentTime,
+              duration: audio.duration,
+              remaining: diagnosticRemaining,
+              readyState: audio.readyState
+            });
+          }
+        }
 
         if (
           activeChannel === "hip-hop" &&
