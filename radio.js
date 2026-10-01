@@ -3361,7 +3361,10 @@ function beginLivePlayback({ startAtBeginning = false } = {}) {
   // Keep the source silent until it reaches the requested station position.
   if (radioSourceGain && audioContext) {
     radioSourceGain.gain.cancelScheduledValues(audioContext.currentTime);
-    radioSourceGain.gain.setValueAtTime(0, audioContext.currentTime);
+    radioSourceGain.gain.setValueAtTime(
+      startAtBeginning ? 1 : 0,
+      audioContext.currentTime
+    );
   }
   try {
     const playing = audio.play();
@@ -3492,10 +3495,6 @@ async function playAdjacentStationItem(direction = 1) {
   const nextIndex = (index + direction + program.length) % program.length;
   const item = program[nextIndex];
   const preserveOpening = FULL_RECORDING_STATION_CHANNELS.has(channel);
-  hipHopMusicSoftStartSource =
-    channel === "hip-hop" && item.type === "music"
-      ? item.track.src
-      : "";
   window.setRadioTrack(item.track);
   const requestId = ++livePlaybackRequest;
   livePlaybackPending = true;
@@ -5465,21 +5464,9 @@ setMainstreamState(
   const HARDER_TRACK_END_FADE_SECONDS =
     0.75;
 
-  // A short gain ramp removes a switching click without burying the first word
-  // or beat beneath a long fade. No genre recording is faded out prematurely.
-  const GENRE_TRACK_START_FADE_SECONDS =
-    0.02;
-
-  // Every Hip Hop MUSIC recording gets the same natural entrance on an
-  // automatic station transition. Drops/commercials are intentionally excluded.
-  const HIP_HOP_MUSIC_START_GAIN =
-    0.08;
-
-  const HIP_HOP_MUSIC_START_FADE_SECONDS =
-    0.30;
-
-  let hipHopMusicSoftStartSource =
-    "";
+  // Full-recording genre stations must preserve the complete opening.
+  // Automatic transitions wait for playable data and start at time 0,
+  // so no gain fade is applied to the recording itself.
 
   function getTrackEndFadeSeconds() {
     return (
@@ -5586,27 +5573,9 @@ function startNextTrackFadeIn() {
     now
   );
 
-  if (activeChannel === "hip-hop") {
-    const source = audio?.getAttribute("src") || "";
-    const softenHipHopMusic =
-      hipHopMusicSoftStartSource &&
-      source === hipHopMusicSoftStartSource &&
-      audio.currentTime <= 0.05;
-
-    if (softenHipHopMusic) {
-      gain.setValueAtTime(HIP_HOP_MUSIC_START_GAIN, now);
-      gain.linearRampToValueAtTime(1, now + HIP_HOP_MUSIC_START_FADE_SECONDS);
-    } else {
-      gain.setValueAtTime(1, now);
-    }
-
-    hipHopMusicSoftStartSource = "";
-  } else if (FULL_RECORDING_STATION_CHANNELS.has(activeChannel)) {
-    gain.setValueAtTime(0, now);
-    gain.linearRampToValueAtTime(1, now + GENRE_TRACK_START_FADE_SECONDS);
-  } else {
-    gain.setValueAtTime(1, now);
-  }
+  // Do not attenuate the opening of complete genre recordings.
+  // The transition path has already waited for metadata/canplay and seeked to 0.
+  gain.setValueAtTime(1, now);
 
   smoothTransitionPending =
     false;
