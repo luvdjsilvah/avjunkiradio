@@ -222,6 +222,7 @@
 
     function open(page, topic = "", focus = true) {
       if (!PAGES[page]) return;
+      if (TOPICS.includes(topic)) receipts.delete(page);
       if (panel.hidden) returnFocus = document.activeElement;
       panel.hidden = false;
       panel.dataset.page = page;
@@ -286,6 +287,11 @@
       const purpose = formElement.dataset.messageForm;
       const draft = drafts.get(purpose);
       const values = new FormData(formElement);
+      const payload = {purpose,name:values.get("name"),email:values.get("email"),topic:values.get("topic"),message:values.get("message"),website:values.get("website"),consent:values.get("consent") === "on"};
+      const signature = JSON.stringify(payload);
+      if (draft.sentPayload && draft.sentPayload !== signature) draft.submissionId = crypto.randomUUID();
+      draft.sentPayload = signature;
+      payload.submissionId = draft.submissionId;
       const status = formElement.querySelector(".station-form-status");
       const submit = formElement.querySelector('button[type="submit"]');
       sending = true;
@@ -297,7 +303,7 @@
       const controller = new AbortController();
       const timeout = window.setTimeout(() => controller.abort(), 25_000);
       try {
-        const response = await fetch(`${API}/api/station/messages`, {method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal,body:JSON.stringify({purpose,name:values.get("name"),email:values.get("email"),topic:values.get("topic"),message:values.get("message"),website:values.get("website"),consent:values.get("consent") === "on",submissionId:draft.submissionId})});
+        const response = await fetch(`${API}/api/station/messages`, {method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal,body:JSON.stringify(payload)});
         const result = await response.json();
         if (!response.ok || !result.ok) throw new Error(result.error || "Your message could not be sent. Please try again.");
         drafts.delete(purpose);
