@@ -3,7 +3,7 @@
 
   const API = "https://av-junki-radio-admin-api.luvdjsilvah.workers.dev";
   const PAGES = {
-    home: {title: "Welcome home", keywords: "welcome studio now playing listen jazz soul"},
+    home: {title: "Home · Main station", keywords: "home studio now playing listen jazz soul"},
     radio: {title: "Radio", keywords: "listen music stations genres jazz main lobby hip hop rnb R&B house reggae gospel live player"},
     podcasts: {title: "Podcasts", keywords: "episodes conversations shows audio podcast pitch"},
     events: {title: "Events", keywords: "calendar shows gatherings dates event submission"},
@@ -18,13 +18,14 @@
   };
   const TOPICS = ["General enquiry", "Listener feedback", "Technical help", "Artist submission", "Podcast pitch", "Event submission", "Advertising", "Sponsorship", "Merchandise", "Community"];
   const GENRES = [
-    ["Jazz · Main Lobby", "Smooth jazz and soul at the front door of the station."],
-    ["Hip Hop", "Beats, rhythm and the station’s Hip Hop programming."],
-    ["R&B", "Soulful vocals and R&B selections."],
-    ["House", "Dance floor energy and House programming."],
-    ["Reggae", "Reggae rhythms and island sounds."],
-    ["Gospel", "Gospel selections and uplifting listening."]
+    ["Jazz", "Main Lobby · Smooth jazz & soul", "lobby"],
+    ["Hip Hop", "Beats, rhythm & wordplay", "hip-hop"],
+    ["R&B", "Soulful voices & slow grooves", "rnb"],
+    ["House", "The sound of the dance floor", "house"],
+    ["Reggae", "Island rhythms & inspiration", "reggae"],
+    ["Gospel", "Faith, gratitude & uplifting sounds", "gospel"]
   ];
+  const EYEBROWS = {radio:"Find your frequency",podcasts:"Conversations worth hearing",events:"Beyond the broadcast",news:"The world, in focus",shop:"The AV Junki collection",community:"You're part of the sound",advertise:"Let your brand be heard",contact:"A direct line to the station",search:"Explore AV Junki Radio",inquiry:"Let's make something happen",about:"Where the vibe lives"};
   const escape = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
   const url = value => {
     try {const parsed = new URL(value); return parsed.protocol === "https:" && !parsed.username && !parsed.password ? parsed.href : "";} catch {return "";}
@@ -36,11 +37,14 @@
   const action = (page, text, topic = "", primary = false) => `<button type="button" data-page="${escape(page)}"${topic ? ` data-topic="${escape(topic)}"` : ""}${primary ? ' class="station-primary"' : ""}>${escape(text)}</button>`;
   const card = (title, text) => `<article class="station-card"><h3>${escape(title)}</h3><p>${escape(text)}</p></article>`;
   const external = (link, text) => url(link) ? `<a class="station-link-button" href="${escape(url(link))}" target="_blank" rel="noopener noreferrer">${escape(text)} <span aria-hidden="true">↗</span></a>` : "";
+  const feature = (heading, text, actions = "", aside = "") => `<div class="station-feature"><div class="station-feature-copy"><h2>${escape(heading)}</h2><p>${escape(text)}</p>${actions ? `<div class="station-actions">${actions}</div>` : ""}</div><div class="station-feature-aside">${aside}</div></div>`;
+  const brandArt = '<div class="station-brand-art" aria-hidden="true"><img src="assets/av-junki-radio-glass-logo.png" alt=""><span>WHERE THE VIBE LIVES</span></div>';
 
   function init() {
     const panel = document.getElementById("station-pages");
     if (!panel) return;
     const title = document.getElementById("station-page-title");
+    const eyebrow = document.getElementById("station-page-eyebrow");
     const body = document.getElementById("station-page-body");
     const buttons = [...document.querySelectorAll("#radio-navigation [data-station-page]")];
     const cache = new Map(), drafts = new Map(), receipts = new Map();
@@ -76,10 +80,6 @@
       const parts = filename.split(/\s+by\s+/i);
       return {title:item.title || parts[0] || "Untitled audio",artist:item.artist || parts.slice(1).join(" by ") || "AV Junki Radio"};
     };
-    const nowPlaying = () => ({
-      title:document.getElementById("player-track-title")?.textContent.trim() || "AV Junki Radio",
-      artist:document.getElementById("player-artist")?.textContent.trim() || "Music lives here"
-    });
     const listen = '<button type="button" class="station-primary" data-listen>Listen to the current station</button>';
     const inquiryAction = (text, topic) => action("inquiry", text, topic);
     const receipt = (page, reference) => `<p class="station-success" role="status">Your message is in the station inbox.${reference ? ` Reference: ${escape(reference)}.` : ""}</p><p class="station-muted">Thank you for getting in touch. The station can reply using the email you supplied.</p><div><button type="button" data-new-message="${escape(page)}">Write another message</button></div>`;
@@ -108,21 +108,14 @@
       const version = ++revision;
       const active = () => version === revision && !panel.hidden;
       const fail = (message, key) => {if (active()) body.innerHTML = `<p class="station-intro station-error">${escape(message)}</p><button type="button" data-refresh="${escape(key)}">Try again</button>`;};
-      const now = nowPlaying();
       title.textContent = PAGES[page].title;
+      if (eyebrow) eyebrow.textContent = EYEBROWS[page] || "AV JUNKI RADIO";
       body.scrollTop = 0;
       switch (page) {
-        case "home":
-          body.innerHTML = `<p class="station-intro">Where the vibe lives. Settle in with AV Junki Radio.</p>
-            <div class="station-grid"><article class="station-card"><span class="station-tag">On the station</span><h2 class="station-now" id="station-now-title">${escape(now.title)}</h2><p id="station-now-artist">${escape(now.artist)}</p><div class="station-actions">${listen}</div></article>
-            <article class="station-card"><h2>Your virtual studio</h2><p>Music, conversations and a community built around the sound. Choose a station, join the broadcast, and explore while you listen.</p><div class="station-actions">${action("radio","Explore radio")}${action("about","Station info")}</div></article></div>
-            <div class="station-actions">${action("podcasts","Podcasts")}${action("events","Events")}${action("news","Latest news")}${action("community","Join the conversation")}</div>`;
-          break;
         case "radio":
-          body.innerHTML = `<p class="station-intro">Choose a genre on the studio wall, then press Listen to join its programme in progress. Songs, station IDs and breaks follow the broadcast.</p>
-            <div class="station-actions" style="margin:0 0 12px">${listen}<button type="button" data-close>Show the studio controls</button></div>
-            <div class="station-grid">${GENRES.map(([name,description]) => card(name,description)).join("")}</div>
-            <p class="station-section station-muted">Programming follows the station’s published library. If a channel has no programme available, the player will let you know.</p>`;
+          body.innerHTML = `<p class="station-intro">Six moods. One place to settle in. Choose your station, then press Listen to join the broadcast.</p>
+            <div class="station-tuning-grid">${GENRES.map(([name,description,channel]) => `<button class="station-tune" type="button" data-tune="${channel}"><span class="station-tune-name">${escape(name)}<small>${escape(description)}</small></span><span aria-hidden="true">↗</span></button>`).join("")}</div>
+            <div class="station-actions">${listen}<button type="button" data-close>Back to the studio</button></div>`;
           break;
         case "podcasts":
           body.innerHTML = '<p class="station-intro" role="status">Loading the station’s published episodes…</p>';
@@ -130,8 +123,8 @@
             if (!active()) return;
             const episodes = items.filter(item => item.genre === "podcast");
             body.innerHTML = `<p class="station-intro">Conversations, stories and shows from AV Junki Radio. Episodes open in a separate tab.</p>
-              ${episodes.length ? `<div class="station-grid">${episodes.map(item => {const meta = metadata(item);const minutes = Math.round(Number(item.duration_seconds) / 60);return `<article class="station-card"><span class="station-tag">${minutes > 0 ? `${minutes} min` : "Episode"}</span><h3>${escape(meta.title)}</h3><p>${escape(meta.artist)}</p><div class="station-actions">${external(`${API}/api/music/${encodeURIComponent(item.id)}/audio`,"Open episode")}</div></article>`;}).join("")}</div>` : card("The episode library", "No episodes have been published yet. Published podcasts will be listed here.")}
-              <div class="station-actions">${inquiryAction("Pitch a podcast","Podcast pitch")}${action("radio","Return to radio")}</div>`;
+              ${episodes.length ? `<div class="station-grid">${episodes.map(item => {const meta = metadata(item);const minutes = Math.round(Number(item.duration_seconds) / 60);return `<article class="station-card"><span class="station-tag">${minutes > 0 ? `${minutes} min` : "Episode"}</span><h3>${escape(meta.title)}</h3><p>${escape(meta.artist)}</p><div class="station-actions">${external(`${API}/api/music/${encodeURIComponent(item.id)}/audio`,"Open episode")}</div></article>`;}).join("")}</div>` : feature("The next conversation starts here.", "Our episode collection is taking shape. New conversations will appear here when they’re published.", inquiryAction("Pitch your show","Podcast pitch"), `<span class="station-tag">A voice worth sharing</span><h3>Bring your story.</h3><p class="station-muted">Have a perspective, a passion or a conversation that belongs on the air? We’d love to hear about it.</p>`) }
+              <div class="station-actions">${episodes.length ? inquiryAction("Pitch a podcast","Podcast pitch") : ""}${action("radio","Return to radio")}</div>`;
           }).catch(() => fail("The episode library could not be loaded. Please try again.","podcasts"));
           break;
         case "events":
@@ -140,8 +133,8 @@
             if (!active()) return;
             const upcoming = Array.isArray(data.events) ? data.events.filter(item => item.published === true && item.title && new Date(item.endsAt || item.startsAt).getTime() >= Date.now()).sort((a,b) => new Date(a.startsAt)-new Date(b.startsAt)) : [];
             body.innerHTML = `<p class="station-intro">Find published AV Junki Radio appearances, listening events and community gatherings. Event times are shown in Pacific Time.</p>
-              ${upcoming.length ? `<div class="station-grid">${upcoming.map(item => `<article class="station-card"><span class="station-tag">${escape(date(item.startsAt))}</span><h3>${escape(item.title)}</h3><p>${escape(item.location || "")}</p><p>${escape(item.description || "")}</p><div class="station-actions">${external(item.link,"Event details")}</div></article>`).join("")}</div>` : card("Upcoming events", "There are no published station events on the calendar. For an appearance, collaboration or event listing, send the details to the station.")}
-              <div class="station-actions">${inquiryAction("Submit an event","Event submission")}${inquiryAction("Discuss a collaboration","General enquiry")}</div>`;
+              ${upcoming.length ? `<div class="station-grid">${upcoming.map(item => `<article class="station-card"><span class="station-tag">${escape(date(item.startsAt))}</span><h3>${escape(item.title)}</h3><p>${escape(item.location || "")}</p><p>${escape(item.description || "")}</p><div class="station-actions">${external(item.link,"Event details")}</div></article>`).join("")}</div>` : feature("Good music brings us together.", "There are no upcoming station events announced just yet. This is where you’ll find the next chance to connect beyond the broadcast.", inquiryAction("Bring us your event","Event submission"), `<span class="station-tag">Make a connection</span><h3>Set the scene.</h3><p class="station-muted">A listening party, an appearance or a collaboration — tell us what you have in mind.</p>`) }
+              <div class="station-actions">${upcoming.length ? inquiryAction("Submit an event","Event submission") : ""}${inquiryAction("Discuss a collaboration","General enquiry")}</div>`;
           }).catch(() => fail("The event calendar could not be loaded. Please try again.","events"));
           break;
         case "news":
@@ -150,8 +143,10 @@
             if (!active()) return;
             const stories = Array.isArray(data.items) ? data.items.filter(item => item.title && url(item.link)) : [];
             if (!stories.length) throw new Error("No current stories");
-            body.innerHTML = `<p class="station-intro">World headlines · ${escape(data.source || "DW News")}<br><small>Updated ${escape(date(data.fetchedAt))}. Read the original reporting in a separate tab.</small></p>
-              <ul class="station-list">${stories.map(item => `<li><a href="${escape(url(item.link))}" target="_blank" rel="noopener noreferrer">${escape(item.title)} <span aria-hidden="true">↗</span></a><small>${escape(date(item.publishedAt))}</small></li>`).join("")}</ul>
+            const [lead, ...remaining] = stories;
+            body.innerHTML = `<div class="station-news-dateline"><span class="station-tag">World headlines · ${escape(data.source || "DW News")}</span><small>Updated ${escape(date(data.fetchedAt))}</small></div>
+              <div class="station-news-layout"><article class="station-news-feature"><span class="station-tag">In the headlines</span><a href="${escape(url(lead.link))}" target="_blank" rel="noopener noreferrer"><h2>${escape(lead.title)}</h2><small>${escape(date(lead.publishedAt))}</small><span class="station-read-story">Read the original story <span aria-hidden="true">↗</span></span></a></article>
+              <ul class="station-list">${remaining.map(item => `<li><a href="${escape(url(item.link))}" target="_blank" rel="noopener noreferrer">${escape(item.title)} <span aria-hidden="true">↗</span></a><small>${escape(date(item.publishedAt))}</small></li>`).join("")}</ul></div>
               <div class="station-actions"><button type="button" data-refresh="news">Refresh headlines</button></div>`;
           }).catch(() => fail("Current headlines are unavailable. Please try again later.","news"));
           break;
@@ -160,16 +155,13 @@
           listings().then(data => {
             if (!active()) return;
             const products = Array.isArray(data.products) ? data.products.filter(item => item.published === true && item.title && url(item.link)) : [];
-            body.innerHTML = `<p class="station-intro">Official AV Junki Radio merchandise and releases. Listed products link to their purchase page.</p>
-              ${products.length ? `<div class="station-grid">${products.map(item => `<article class="station-card"><h3>${escape(item.title)}</h3><p>${escape(item.description || "")}</p>${item.price ? `<p>${escape(item.price)}</p>` : ""}<div class="station-actions">${external(item.link,"View product")}</div></article>`).join("")}</div>` : card("Official merchandise", "No products are listed for sale yet. Tell us which AV Junki Radio merchandise or releases you would like to see.")}
-              <div class="station-actions">${inquiryAction("Ask about merchandise","Merchandise")}${action("radio","Keep listening")}</div>`;
+            body.innerHTML = products.length ? `<p class="station-intro">Official AV Junki Radio merchandise and releases.</p><div class="station-grid">${products.map(item => `<article class="station-card"><h3>${escape(item.title)}</h3><p>${escape(item.description || "")}</p>${item.price ? `<p>${escape(item.price)}</p>` : ""}<div class="station-actions">${external(item.link,"View product")}</div></article>`).join("")}</div><div class="station-actions">${inquiryAction("Ask about merchandise","Merchandise")}</div>`
+              : `<div class="station-feature">${brandArt}<div class="station-feature-copy"><span class="station-tag">Official merchandise</span><h2>Take the vibe with you.</h2><p>Our collection has yet to launch. Tell us what you’d love to see from AV Junki Radio.</p><div class="station-actions">${inquiryAction("Ask about merchandise","Merchandise")}</div><p class="station-section station-muted">No products are currently available for purchase.</p></div></div>`;
           }).catch(() => fail("The shop listings could not be loaded. Please try again.","shop"));
           break;
         case "community":
-          body.innerHTML = `<p class="station-intro">A place for the people behind the listening. Share an idea, introduce your music, or tell us what you love hearing.</p>
-            <div class="station-grid">${card("Listeners", "Tell us about your favourite sounds, suggest a theme, or share feedback on the station.")}${card("Artists & creators", "Introduce your work with a listening link and a few words about yourself. The station can review it for programming.")}</div>
-            <div class="station-actions">${inquiryAction("Share listener feedback","Listener feedback")}${inquiryAction("Submit music","Artist submission")}${inquiryAction("Start a conversation","Community")}</div>
-            <p class="station-section station-muted">Community messages go privately to the station. Submissions are reviewed; sending one does not guarantee a broadcast or event placement.</p>`;
+          body.innerHTML = feature("Your seat at the table.", "The station is better with you in it. Share a favourite sound, suggest a theme, or tell us what keeps you listening.", inquiryAction("Join the conversation","Community") + inquiryAction("Share feedback","Listener feedback"), `<span class="station-tag">Artists & creators</span><h3>Let us hear your world.</h3><p class="station-muted">Introduce your music with a listening link and a few words about yourself.</p><div class="station-actions">${inquiryAction("Introduce your music","Artist submission")}</div>`)
+            + `<p class="station-section station-muted"><small>Your messages go privately to the station. Music submissions are reviewed for programming.</small></p>`;
           break;
         case "advertise":
           body.innerHTML = `<p class="station-intro">Put your business in the conversation. Tell us about your campaign, audience and preferred dates, and discuss a placement with AV Junki Radio.</p>
@@ -183,10 +175,8 @@
           body.innerHTML = `<p class="station-intro">Send a proposal, music introduction, podcast pitch, event listing or business enquiry. Links to your work and relevant dates are welcome.</p>${form(page, topic)}`;
           break;
         case "about":
-          body.innerHTML = `<p class="station-intro">Music lives here. AV Junki Radio is an online radio experience built around a virtual studio, with smooth jazz and soul at its front door and room to explore more sounds.</p>
-            <div class="station-grid">${card("Music for the moment", "Explore Jazz, Hip Hop, R&B, House, Reggae and Gospel programming. Join a station in progress and let the programme carry the listening.")}${card("More than a playlist", "Find published podcasts, station events, world headlines and ways to connect with the people behind the sound.")}</div>
-            <p class="station-section station-muted">AV Junki Radio is currently in beta. Listener feedback helps shape the experience.</p>
-            <div class="station-actions">${action("radio","Explore the stations")}${action("contact","Contact the station")}${inquiryAction("Send feedback","Listener feedback")}</div>`;
+          body.innerHTML = feature("Music for the moment.", "AV Junki Radio is a place to settle in. Smooth jazz and soul welcome you at the front door, with more sounds waiting along the studio walls.", action("radio","Find your station", "", true), `<span class="station-tag">More than a playlist</span><h3>Where the vibe lives.</h3><p class="station-muted">Music, conversations and a connection to the people behind the sound. Join the broadcast and make yourself at home.</p>`)
+            + `<div class="station-actions">${action("contact","Contact the station")}${inquiryAction("Share feedback","Listener feedback")}</div><p class="station-section station-muted"><small>AV Junki Radio is in beta. Your feedback helps shape the experience.</small></p>`;
           break;
         case "search":
           body.innerHTML = `<p class="station-intro">Find station sections, artists, audio titles and published podcast episodes.</p><label class="station-search-label">Search AV Junki Radio<input id="station-search-input" type="search" placeholder="Try Jazz, advertising or an artist" maxlength="100" autocomplete="off"></label><p id="station-search-status" class="station-muted" role="status"></p><div id="station-search-results"></div>`;
@@ -222,6 +212,14 @@
 
     function open(page, topic = "", focus = true) {
       if (!PAGES[page]) return;
+      if (page === "home") {
+        close(focus);
+        if (document.documentElement.dataset.radioChannel !== "lobby") document.getElementById("home-station-control")?.click();
+        const home = document.getElementById("nav-home");
+        home?.setAttribute("aria-current", "page");
+        if (focus) home?.focus({preventScroll:true});
+        return;
+      }
       if (TOPICS.includes(topic)) receipts.delete(page);
       if (panel.hidden) returnFocus = document.activeElement;
       panel.hidden = false;
@@ -234,12 +232,12 @@
       render(page, TOPICS.includes(topic) ? topic : "");
       if (focus) title.focus({preventScroll:true});
     }
-    function close() {
+    function close(focus = true) {
       revision++;
       panel.hidden = true;
       delete panel.dataset.page;
-      buttons.forEach(button => {button.setAttribute("aria-expanded","false");button.removeAttribute("aria-current");});
-      if (returnFocus?.isConnected) returnFocus.focus({preventScroll:true});
+      buttons.forEach(button => {if (button.dataset.stationPage !== "home") button.setAttribute("aria-expanded","false");button.removeAttribute("aria-current");});
+      if (focus && returnFocus?.isConnected) returnFocus.focus({preventScroll:true});
     }
     function navigate(page, topic = "") {
       const next = `${location.pathname}${location.search}${page ? `#${page}` : ""}`;
@@ -248,12 +246,12 @@
     }
     function route() {
       const page = location.hash.slice(1);
-      if (PAGES[page]) {if (panel.hidden || panel.dataset.page !== page) open(page,"",false);}
+      if (PAGES[page]) {if (page === "home" || panel.hidden || panel.dataset.page !== page) open(page,"",false);}
       else if (!panel.hidden) close();
     }
     buttons.forEach(button => {
-      button.setAttribute("aria-controls","station-pages");
-      button.setAttribute("aria-expanded","false");
+      button.setAttribute("aria-controls",button.dataset.stationPage === "home" ? "screen-content" : "station-pages");
+      if (button.dataset.stationPage !== "home") button.setAttribute("aria-expanded","false");
       button.addEventListener("click", event => {event.preventDefault();navigate(button.dataset.stationPage);});
     });
     document.getElementById("station-pages-close").addEventListener("click", () => navigate(""));
@@ -262,6 +260,12 @@
       if (!target || !body.contains(target)) return;
       if (target.dataset.newMessage) {receipts.delete(target.dataset.newMessage);navigate(target.dataset.newMessage);}
       else if (target.dataset.page) navigate(target.dataset.page,target.dataset.topic);
+      else if (target.dataset.tune && GENRES.some(genre => genre[2] === target.dataset.tune)) {
+        navigate("");
+        if (document.documentElement.dataset.radioChannel !== target.dataset.tune) {
+          document.querySelector(`.panel-hotspot[data-channel="${target.dataset.tune}"]`)?.click();
+        }
+      }
       else if (target.hasAttribute("data-close")) navigate("");
       else if (target.hasAttribute("data-listen")) {
         navigate("");
@@ -324,14 +328,6 @@
     document.addEventListener("keydown", event => {if (event.key === "Escape" && !panel.hidden) {event.preventDefault();navigate("");}});
     window.addEventListener("popstate", route);
     window.addEventListener("hashchange", route);
-    const trackInfo = document.getElementById("player-track-info");
-    if (trackInfo) new MutationObserver(() => {
-      if (panel.hidden || panel.dataset.page !== "home") return;
-      const current = nowPlaying();
-      const trackTitle = document.getElementById("station-now-title"), trackArtist = document.getElementById("station-now-artist");
-      if (trackTitle) trackTitle.textContent = current.title;
-      if (trackArtist) trackArtist.textContent = current.artist;
-    }).observe(trackInfo,{childList:true,characterData:true,subtree:true});
     route();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded",init,{once:true}); else init();

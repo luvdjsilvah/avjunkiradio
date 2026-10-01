@@ -18,9 +18,9 @@
 
   <link
     rel="stylesheet"
-    href="radio.css?v=16"
+    href="radio.css?v=17"
   />
-  <link rel="stylesheet" href="station-pages.css?v=1" />
+  <link rel="stylesheet" href="station-pages.css?v=2" />
 </head>
 
 
@@ -302,10 +302,10 @@
         <section id="station-pages" hidden aria-labelledby="station-page-title">
           <header class="station-page-header">
             <div>
-              <span class="station-eyebrow">AV JUNKI RADIO</span>
+              <span class="station-eyebrow" id="station-page-eyebrow">AV JUNKI RADIO</span>
               <h1 id="station-page-title" tabindex="-1"></h1>
             </div>
-            <button id="station-pages-close" type="button" aria-label="Back to the studio">Back to studio <span aria-hidden="true">×</span></button>
+            <button id="station-pages-close" type="button" aria-label="Back to the studio"><span class="station-close-label">Studio</span> <span aria-hidden="true">×</span></button>
           </header>
           <div id="station-page-body"></div>
         </section>
@@ -315,6 +315,9 @@
       <!-- =====================================================
            MUSIC GENRE PANELS
       ====================================================== -->
+
+      <!-- Home reuses the existing station-switch handler. -->
+      <button id="home-station-control" class="panel-hotspot" type="button" data-channel="lobby" hidden aria-hidden="true" tabindex="-1"></button>
 
       <button
         class="panel-hotspot"
@@ -844,7 +847,7 @@
 
 <script src="radio.js?v=27"></script>
 <script src="info-center.js?v=2" defer></script>
-<script src="station-pages.js?v=2" defer></script>
+<script src="station-pages.js?v=3" defer></script>
 
 </body>
 
