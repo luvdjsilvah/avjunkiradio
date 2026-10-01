@@ -523,19 +523,23 @@ test('genre transitions wait for metadata, seeking and playable data before cons
   }
 });
 
-test('genre transitions ease the next recording in instead of jumping its volume from mute to full',async()=>{
+test('Hip Hop starts at full gain while the other genre stations retain the short opening ramp',async()=>{
   for(const channel of genreChannels) {
     const p=await genrePlayer(channel);
     await p.audio.finish();await flush();
     const ctx=p.contexts[0],gain=ctx.gains[0].gain;
-    assert.equal(gain.valueAt(ctx.currentTime),0);
-    assert.ok(gain.valueAt(ctx.currentTime+.005)>0 && gain.valueAt(ctx.currentTime+.005)<1,'The opening must rise smoothly');
-    assert.equal(gain.valueAt(ctx.currentTime+.05),1,'The ramp must be short enough to preserve opening words and beats');
+    if(channel==='hip-hop') {
+      assert.equal(gain.valueAt(ctx.currentTime),1,'Hip Hop must expose the first sample at full gain');
+    } else {
+      assert.equal(gain.valueAt(ctx.currentTime),0);
+      assert.ok(gain.valueAt(ctx.currentTime+.005)>0 && gain.valueAt(ctx.currentTime+.005)<1,'The opening must rise smoothly');
+      assert.equal(gain.valueAt(ctx.currentTime+.05),1,'The ramp must be short enough to preserve opening words and beats');
+    }
     assert.equal(p.audio.plays.at(-1).time,0);
   }
 });
 
-test('the genre start ramp waits for actual playback rather than expiring during a delayed play request',async()=>{
+test('Hip Hop stays muted while loading then opens at full gain when playback actually begins',async()=>{
   const p=await genrePlayer('hip-hop');
   let releasePlay;p.audio.playGate=new Promise(resolve=>{releasePlay=resolve;});
   await p.audio.finish();await flush();
@@ -545,9 +549,7 @@ test('the genre start ramp waits for actual playback rather than expiring during
   assert.equal(gain.valueAt(ctx.currentTime),0);
   releasePlay();await flush();
   assert.equal(p.audio.paused,false);assert.equal(p.audio.currentTime,0);
-  assert.equal(gain.valueAt(ctx.currentTime),0);
-  assert.ok(gain.valueAt(ctx.currentTime+.005)>0 && gain.valueAt(ctx.currentTime+.005)<1);
-  assert.equal(gain.valueAt(ctx.currentTime+.05),1);
+  assert.equal(gain.valueAt(ctx.currentTime),1,'Hip Hop must become audible immediately at the true beginning');
 });
 
 test('pausing a genre transition cancels a loading recording and late canplay cannot restart it',async()=>{
