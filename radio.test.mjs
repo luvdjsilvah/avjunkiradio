@@ -523,61 +523,92 @@ test('genre transitions wait for metadata, seeking and playable data before cons
   }
 });
 
-test('Hip Hop stays full gain except for the targeted Do Me soft handoff',async()=>{
-  for(const channel of genreChannels) {
-    const p=await genrePlayer(channel);
+test('Hip Hop music gets a reusable soft entrance while drops stay full gain',async()=>{
+  const p=await genrePlayer('hip-hop');
+  const program=p.api.liveStationPrograms['hip-hop'];
+
+  let checkedMusic=false, checkedDrop=false;
+  for(let i=0;i<program.length*2 && (!checkedMusic || !checkedDrop);i++) {
+    const before=p.api.currentLiveProgramIndexes['hip-hop'];
+    const nextIndex=(before+1)%program.length;
+    const next=program[nextIndex];
+
     await p.audio.finish();await flush();
+
     const ctx=p.contexts[0],gain=ctx.gains[0].gain;
-    const title=p.elements.get('player-track-title').textContent;
-    if(channel==='hip-hop') {
-      if(title==='Do Me') {
-        assert.equal(gain.valueAt(ctx.currentTime),0.18);
-        assert.ok(gain.valueAt(ctx.currentTime+.06)>0.18 && gain.valueAt(ctx.currentTime+.06)<1);
-        assert.equal(gain.valueAt(ctx.currentTime+.13),1);
-      } else {
-        assert.equal(gain.valueAt(ctx.currentTime),1,'Other Hip Hop recordings must keep their full opening');
-      }
-    } else {
-      assert.equal(gain.valueAt(ctx.currentTime),0);
-      assert.ok(gain.valueAt(ctx.currentTime+.005)>0 && gain.valueAt(ctx.currentTime+.005)<1,'The opening must rise smoothly');
-      assert.equal(gain.valueAt(ctx.currentTime+.05),1,'The ramp must be short enough to preserve opening words and beats');
+    assert.equal(p.audio.currentTime,0,'Every automatic transition must still start at the true beginning');
+
+    if(next.type==='music' && !checkedMusic) {
+      checkedMusic=true;
+      assert.equal(gain.valueAt(ctx.currentTime),0.08,'Hip Hop music should start gently');
+      assert.ok(gain.valueAt(ctx.currentTime+.15)>0.08 && gain.valueAt(ctx.currentTime+.15)<1);
+      assert.equal(gain.valueAt(ctx.currentTime+.31),1,'Hip Hop music fade should complete quickly');
     }
-    assert.equal(p.audio.plays.at(-1).time,0);
+
+    if(next.type==='id' && !checkedDrop) {
+      checkedDrop=true;
+      assert.equal(gain.valueAt(ctx.currentTime),1,'Hip Hop drops/commercials should not inherit the music fade');
+    }
   }
+
+  assert.equal(checkedMusic,true,'Fixture must exercise a Hip Hop music transition');
+  assert.equal(checkedDrop,true,'Fixture must exercise a Hip Hop drop transition');
 });
 
-test('Hip Hop waits silently while loading, then applies the selected opening level when playback begins',async()=>{
+test('Hip Hop keeps a loading music track silent, then starts its reusable fade when playback begins',async()=>{
   const p=await genrePlayer('hip-hop');
+  const program=p.api.liveStationPrograms['hip-hop'];
+
+  for(let i=0;i<program.length;i++) {
+    const index=p.api.currentLiveProgramIndexes['hip-hop'];
+    const next=program[(index+1)%program.length];
+    if(next?.type==='music') break;
+    await p.audio.finish();await flush();
+  }
+
+  const currentIndex=p.api.currentLiveProgramIndexes['hip-hop'];
+  assert.equal(program[(currentIndex+1)%program.length]?.type,'music','Fixture must find a music transition');
+
   let releasePlay;p.audio.playGate=new Promise(resolve=>{releasePlay=resolve;});
   await p.audio.finish();await flush();
-  const title=p.elements.get('player-track-title').textContent;
+
   const ctx=p.contexts[0],gain=ctx.gains[0].gain;
   ctx.currentTime+=.5;
   assert.equal(p.api.pending,true);assert.equal(p.audio.paused,true);
-  assert.equal(gain.valueAt(ctx.currentTime),0);
+  assert.equal(gain.valueAt(ctx.currentTime),0,'Loading remains silent');
+
   releasePlay();await flush();
+
   assert.equal(p.audio.paused,false);assert.equal(p.audio.currentTime,0);
-  assert.equal(gain.valueAt(ctx.currentTime),title==='Do Me'?0.18:1);
+  assert.equal(gain.valueAt(ctx.currentTime),0.08,'The fade begins only when playback really starts');
+  assert.equal(gain.valueAt(ctx.currentTime+.31),1);
 });
 
-test('Do Me receives a short soft handoff at time zero without altering other Hip Hop recordings',async()=>{
+test('new Hip Hop music items automatically receive the same fade without title-specific code',async()=>{
   const p=await genrePlayer('hip-hop');
+  p.data.music.music.push({
+    id:99,genre:'hip-hop',original_filename:'future_upload.mp3',
+    r2_key:'music/future-upload',duration_seconds:123,enabled:1
+  });
+  await p.api.refreshStationCatalog();
+
   const program=p.api.liveStationPrograms['hip-hop'];
-  let next;
-  for(let i=0;i<program.length;i++) {
+  let found=false;
+  for(let i=0;i<program.length*2;i++) {
     const index=p.api.currentLiveProgramIndexes['hip-hop'];
-    next=program[(index+1)%program.length];
-    if(next?.track?.title==='Do Me') break;
+    const next=program[(index+1)%program.length];
+    if(next?.track?.src?.includes('/api/music/99/audio')) {
+      await p.audio.finish();await flush();
+      const ctx=p.contexts[0],gain=ctx.gains[0].gain;
+      assert.equal(p.audio.currentTime,0);
+      assert.equal(gain.valueAt(ctx.currentTime),0.08);
+      assert.equal(gain.valueAt(ctx.currentTime+.31),1);
+      found=true;
+      break;
+    }
     await p.audio.finish();await flush();
   }
-  assert.equal(next?.track?.title,'Do Me','Fixture must find the Do Me transition');
-  await p.audio.finish();await flush();
-  const ctx=p.contexts[0],gain=ctx.gains[0].gain;
-  assert.equal(p.elements.get('player-track-title').textContent,'Do Me');
-  assert.equal(p.audio.currentTime,0,'Do Me must still start at the true beginning');
-  assert.equal(gain.valueAt(ctx.currentTime),0.18);
-  assert.ok(gain.valueAt(ctx.currentTime+.06)>0.18 && gain.valueAt(ctx.currentTime+.06)<1);
-  assert.equal(gain.valueAt(ctx.currentTime+.13),1);
+  assert.equal(found,true,'A newly uploaded Hip Hop song must receive the default music fade');
 });
 
 test('pausing a genre transition cancels a loading recording and late canplay cannot restart it',async()=>{
