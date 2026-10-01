@@ -52,6 +52,16 @@ test("weather rejects old observations instead of presenting a forecast as curre
   assert.equal((await response.json()).ok, false);
 });
 
+test("sports use ESPN's alternate public endpoint if the first connection is unavailable", async t => {
+  const {request,calls} = await setup(t, url => {
+    if (url.startsWith("https://site.api.espn.com/")) throw new Error("Connection unavailable");
+    return {events:[]};
+  });
+  assert.equal((await request("sports")).status,200);
+  assert.equal(calls.length,12);
+  assert.equal(calls.filter(url => url.startsWith("https://site.web.api.espn.com/")).length,6);
+});
+
 test("a forecast outage preserves the measured current weather with unavailable highs/lows", async t => {
   const {request} = await setup(t, url => {
     if (url.includes("/points/")) throw new Error("Forecast metadata offline");

@@ -114,7 +114,12 @@ function infoGame(event, config) {
 
 async function infoSports() {
   const results = await Promise.allSettled(INFO_LEAGUES.map(async config => {
-    const board = await infoRead(`https://site.api.espn.com/apis/site/v2/sports/${config.path}/scoreboard`);
+    let board;
+    try {
+      board = await infoRead(`https://site.api.espn.com/apis/site/v2/sports/${config.path}/scoreboard`);
+    } catch {
+      board = await infoRead(`https://site.web.api.espn.com/apis/site/v2/sports/${config.path}/scoreboard`);
+    }
     if (!Array.isArray(board.events)) throw new Error("Sports response invalid");
     const games = board.events.map(event => infoGame(event, config)).filter(Boolean);
     const rank = game => (game.state === "in" ? 0 : game.state === "pre" ? 2 : 4) -
