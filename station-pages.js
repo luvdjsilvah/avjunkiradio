@@ -226,7 +226,8 @@
       panel.dataset.page = page;
       buttons.forEach(button => {
         const selected = button.dataset.stationPage === page;
-        button.setAttribute("aria-expanded", String(selected));
+        if (button.dataset.stationPage === "home") button.removeAttribute("aria-expanded");
+        else button.setAttribute("aria-expanded", String(selected));
         if (selected) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current");
       });
       render(page, TOPICS.includes(topic) ? topic : "");

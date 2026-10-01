@@ -64,6 +64,7 @@
 #station-page-body {
   min-height: 0;
   flex: 1;
+  font-size: clamp(12px, 1.8cqw, 16px);
   padding: 0 4.5cqw max(28px, 4.5cqw);
   overflow: auto;
   overscroll-behavior: contain;
@@ -105,11 +106,11 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 20cqw;
+  min-height: 23cqw;
   padding: 12px;
   background: radial-gradient(ellipse, #b07c3929, transparent 68%);
 }
-#station-pages .station-brand-art img { width: 92%; max-height: 19cqw; object-fit: contain; }
+#station-pages .station-brand-art img { width: 92%; max-height: 23cqw; object-fit: contain; }
 #station-pages .station-brand-art span { color: #be9c66; letter-spacing: .22em; font-size: clamp(8px, 1cqw, 11px); margin-top: 12px; }
 #station-pages .station-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 17px; }
 #station-pages button, #station-pages .station-link-button {
