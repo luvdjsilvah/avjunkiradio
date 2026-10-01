@@ -5801,6 +5801,9 @@ function startNextTrackFadeIn() {
 
   function updateLeftInfoTime() {
 
+    // The separate information controller owns this screen's live feeds.
+    if (document.getElementById("left-info-display")?.dataset.liveInfo === "true") return;
+
     if (
       !leftInfoClock ||
       !leftInfoDate
@@ -5850,6 +5853,8 @@ function startNextTrackFadeIn() {
   function showSport(
     index
   ) {
+
+    if (document.getElementById("left-info-display")?.dataset.liveInfo === "true") return;
 
     const sport =
       sportsRotation[
@@ -5954,6 +5959,8 @@ function startNextTrackFadeIn() {
   ========================================================= */
 
   function updateDowDisplay() {
+
+    if (document.getElementById("left-info-display")?.dataset.liveInfo === "true") return;
 
     if (
       !dowValue ||

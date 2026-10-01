@@ -1,3 +1,266 @@
+/* Independent, cached information feeds. These handlers use no D1/R2 bindings. */
+const INFO_TTL = {weather: 300, sports: 60, markets: 120, traffic: 300, news: 600};
+const infoMemory = new Map();
+const infoPending = new Map();
+const INFO_AGENT = "AVJunkiRadio/1.0 (+https://avjunkiradio.com)";
+
+function infoResponse(data, status = 200, ttl = 30) {
+  return new Response(JSON.stringify(data), {status, headers: {
+    "Content-Type": "application/json; charset=utf-8",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+    "Cache-Control": `public, max-age=${ttl}`,
+    "X-Content-Type-Options": "nosniff"
+  }});
+}
+
+async function infoRead(url, format = "json") {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12_000);
+  try {
+    const response = await fetch(url, {signal: controller.signal, headers: {
+      "User-Agent": INFO_AGENT,
+      "Accept": format === "json" ? "application/json, application/geo+json" : "application/rss+xml, application/xml, text/xml"
+    }});
+    if (!response.ok) throw new Error(`Information source returned ${response.status}`);
+    const body = await response.text();
+    if (body.length > 2_000_000) throw new Error("Information response too large");
+    return format === "json" ? JSON.parse(body) : body;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function infoText(value, max = 240) {
+  return String(value || "").replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/<[^>]*>/g, "").replace(/&#(x[\da-f]+|\d+);/gi, (_, n) => {
+      const point = n[0].toLowerCase() === "x" ? parseInt(n.slice(1), 16) : Number(n);
+      return point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : "";
+    }).replace(/&(amp|lt|gt|quot|apos|nbsp);/gi, (_, name) => ({amp:"&",lt:"<",gt:">",quot:'"',apos:"'",nbsp:" "})[name.toLowerCase()])
+    .replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function infoDate(value) {
+  const milliseconds = Date.parse(value);
+  return Number.isFinite(milliseconds) ? new Date(milliseconds).toISOString() : null;
+}
+
+function infoFahrenheit(value, unit) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return unit === "F" || /degF$/.test(unit) ? value : value * 9 / 5 + 32;
+}
+
+async function infoWeather() {
+  const readings = await Promise.allSettled([
+    infoRead("https://api.weather.gov/stations/KHND/observations/latest"),
+    infoRead("https://api.weather.gov/stations/KLAS/observations/latest"),
+    infoRead("https://api.weather.gov/points/36.0395,-114.9817")
+  ]);
+  const observations = readings.slice(0, 2).filter(x => x.status === "fulfilled")
+    .map(x => x.value.properties).filter(x => x && typeof x.temperature?.value === "number" &&
+      Number.isFinite(x.temperature.value) && Date.now() - Date.parse(x.timestamp) < 2 * 60 * 60_000 &&
+      Date.parse(x.timestamp) <= Date.now() + 5 * 60_000);
+  const observed = observations[0] || observations[1];
+  if (!observed) throw new Error("Current weather observation unavailable");
+  let high = null, low = null;
+  const forecastUrl = readings[2].status === "fulfilled" && readings[2].value.properties?.forecast;
+  if (forecastUrl && new URL(forecastUrl).origin === "https://api.weather.gov") {
+    try {
+      const forecast = await infoRead(forecastUrl);
+      const periods = forecast.properties?.periods || [];
+      const day = periods.find(p => p.isDaytime);
+      const night = periods.find(p => !p.isDaytime);
+      high = infoFahrenheit(day?.temperature, day?.temperatureUnit);
+      low = infoFahrenheit(night?.temperature, night?.temperatureUnit);
+    } catch { /* Current observations can still be shown when forecasts are late. */ }
+  }
+  return {
+    source: "National Weather Service", location: "Henderson, NV",
+    temperature: infoFahrenheit(observed.temperature.value, observed.temperature.unitCode),
+    condition: infoText(observed.textDescription || "Conditions unavailable", 60),
+    observedAt: infoDate(observed.timestamp), high, low,
+    rangeLabel: "Next daytime high / nighttime low"
+  };
+}
+
+const INFO_LEAGUES = [
+  {path: "football/nfl", league: "NFL", sport: "FOOTBALL", local: "LV"},
+  {path: "basketball/wnba", league: "WNBA", sport: "BASKETBALL", local: "LV"},
+  {path: "basketball/nba", league: "NBA", sport: "BASKETBALL"},
+  {path: "baseball/mlb", league: "MLB", sport: "BASEBALL"},
+  {path: "hockey/nhl", league: "NHL", sport: "HOCKEY", local: "VGK"},
+  {path: "soccer/usa.1", league: "MLS", sport: "SOCCER"}
+];
+
+function infoGame(event, config) {
+  const competition = event.competitions?.[0];
+  const competitors = competition?.competitors || [];
+  if (competitors.length !== 2) return null;
+  const a = competitors.find(x => x.homeAway === "away") || competitors[0];
+  const b = competitors.find(x => x.homeAway === "home") || competitors[1];
+  const type = competition.status?.type || event.status?.type;
+  if (!a.team?.abbreviation || !b.team?.abbreviation || !type?.state) return null;
+  const score = competitor => type.state === "pre" ? "--" : /^\d{1,3}$/.test(String(competitor.score)) ? String(competitor.score) : "--";
+  const link = event.links?.find(x => /^https:\/\/(www\.)?espn\.com\//.test(x.href || ""))?.href || "https://www.espn.com/";
+  return {
+    league: config.league, sport: config.sport,
+    teamA: infoText(a.team.abbreviation, 5), teamB: infoText(b.team.abbreviation, 5),
+    scoreA: score(a), scoreB: score(b), state: type.state,
+    scheduled: type.name === "STATUS_SCHEDULED",
+    status: infoText(type.shortDetail || type.detail || type.description, 80),
+    date: infoDate(competition.date || event.date), fullName: infoText(event.name, 160), link
+  };
+}
+
+async function infoSports() {
+  const results = await Promise.allSettled(INFO_LEAGUES.map(async config => {
+    const board = await infoRead(`https://site.api.espn.com/apis/site/v2/sports/${config.path}/scoreboard`);
+    if (!Array.isArray(board.events)) throw new Error("Sports response invalid");
+    const games = board.events.map(event => infoGame(event, config)).filter(Boolean);
+    const rank = game => (game.state === "in" ? 0 : game.state === "pre" ? 2 : 4) -
+      (config.local && [game.teamA, game.teamB].includes(config.local) ? 1 : 0);
+    games.sort((a,b) => rank(a) - rank(b) || (a.state === "post" ? Date.parse(b.date) - Date.parse(a.date) : Date.parse(a.date) - Date.parse(b.date)));
+    return games.slice(0, 4);
+  }));
+  if (results.every(x => x.status === "rejected")) throw new Error("Sports feeds unavailable");
+  const lists = results.map(x => x.status === "fulfilled" ? x.value : []);
+  const games = [];
+  // Interleave leagues, so every league with games appears in the first rotation.
+  for (let slot = 0; slot < 4; slot++) for (const list of lists) if (list[slot]) games.push(list[slot]);
+  return {source: "ESPN", games, unavailableLeagues: results.flatMap((x,i) => x.status === "rejected" ? [INFO_LEAGUES[i].league] : [])};
+}
+
+function infoMarketDate(seconds) {
+  return new Intl.DateTimeFormat("en-CA", {timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(seconds * 1000));
+}
+
+async function infoMarkets() {
+  const data = await infoRead("https://query1.finance.yahoo.com/v8/finance/chart/%5EDJI?interval=1d&range=5d");
+  const chart = data.chart?.result?.[0], meta = chart?.meta;
+  const value = meta?.regularMarketPrice, seconds = meta?.regularMarketTime;
+  if (typeof value !== "number" || !Number.isFinite(value) || !(seconds > 0)) throw new Error("Market quote invalid");
+  const closes = chart.indicators?.quote?.[0]?.close || [];
+  const previous = (chart.timestamp || []).map((timestamp,i) => ({timestamp,close:closes[i]}))
+    .filter(x => typeof x.close === "number" && Number.isFinite(x.close) && infoMarketDate(x.timestamp) < infoMarketDate(seconds)).at(-1)?.close;
+  if (!(previous > 0)) throw new Error("Previous trading close unavailable");
+  const change = value - previous;
+  const regular = meta.currentTradingPeriod?.regular;
+  const now = Date.now() / 1000;
+  return {
+    source: "Yahoo Finance", symbol: "^DJI", value, change, percent: change / previous * 100,
+    quoteAt: new Date(seconds * 1000).toISOString(), delayed: true,
+    marketOpen: Boolean(regular && now >= regular.start && now < regular.end)
+  };
+}
+
+function infoPacificDate(value) {
+  const parts = String(value || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4}),?\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!parts) return null;
+  const year = Number(parts[3]) < 100 ? 2000 + Number(parts[3]) : Number(parts[3]);
+  const hour = Number(parts[4]) % 12 + (parts[6].toUpperCase() === "PM" ? 12 : 0);
+  const civil = Date.UTC(year, Number(parts[1]) - 1, Number(parts[2]), hour, Number(parts[5]));
+  const offset = new Intl.DateTimeFormat("en-US", {timeZone:"America/Los_Angeles",timeZoneName:"longOffset"})
+    .formatToParts(new Date(civil)).find(part => part.type === "timeZoneName")?.value.match(/GMT([+-])(\d{2}):(\d{2})/);
+  if (!offset) return null;
+  const minutes = (Number(offset[2]) * 60 + Number(offset[3])) * (offset[1] === "+" ? 1 : -1);
+  return civil - minutes * 60_000;
+}
+
+async function infoTraffic() {
+  // This is the public Nevada 511 text-report data, not its keyed developer API.
+  const layers = ["Incidents", "Closures", "Construction"];
+  const markerResults = await Promise.all(layers.map(layer => infoRead(`https://www.nvroads.com/map/mapIcons/${layer}`)));
+  const localIds = new Set();
+  for (let i = 0; i < layers.length; i++) {
+    const markers = markerResults[i].item2;
+    if (!Array.isArray(markers)) throw new Error("Traffic locations unavailable");
+    for (const marker of markers) {
+      const [latitude, longitude] = marker.location || [];
+      if (typeof latitude === "number" && typeof longitude === "number" && latitude >= 35.7 && latitude <= 36.5 && longitude >= -115.6 && longitude <= -114.6) {
+        localIds.add(`${layers[i]}:${marker.itemId}`);
+      }
+    }
+  }
+  const rows = [];
+  let complete = false;
+  for (let page = 0; page < 5; page++) {
+    const url = new URL("https://www.nvroads.com/List/GetData/traffic");
+    url.searchParams.set("query", JSON.stringify({start:page * 100,length:100,columns:[],order:[],search:{value:""}}));
+    url.searchParams.set("lang", "en");
+    const data = await infoRead(url.href);
+    if (!Array.isArray(data.data) || !Number.isFinite(data.recordsFiltered)) throw new Error("Traffic response invalid");
+    rows.push(...data.data);
+    if (rows.length >= data.recordsFiltered) {complete = true; break;}
+    if (!data.data.length) break;
+  }
+  if (!complete) throw new Error("Complete Nevada traffic report unavailable");
+  const events = rows.filter(event => localIds.has(`${event.layerName}:${event.DT_RowId}`))
+    .map(event => {
+      const condition = infoText(String(event.eventSubType || event.type || "Traffic alert").replace(/([a-z])([A-Z])/g, "$1 $2"));
+      const start = infoPacificDate(event.startDate);
+      const planned = start !== null && start > Date.now();
+      return {
+        route: infoText(`${event.roadwayName || "Las Vegas"}${event.locationDescription ? " · " + event.locationDescription : ""}`, 160),
+        condition: infoText((planned ? "Planned " : "") + condition + (event.laneDescription ? " · " + event.laneDescription : ""), 160),
+        description: infoText(event.description, 400), updated: infoText(event.lastUpdated, 40),
+        priority: (event.isFullClosure ? 0 : event.type === "Incidents" ? 1 : event.type === "Closures" ? 2 : 3) + (planned ? 10 : 0),
+        link: "https://www.nvroads.com/list/events/traffic"
+      };
+    }).sort((a,b) => a.priority - b.priority).slice(0, 8);
+  return {source: "Nevada 511", region: "Henderson / Las Vegas", events};
+}
+
+async function infoNews() {
+  const xml = await infoRead("https://rss.dw.com/rdf/rss-en-world", "xml");
+  const get = (item, name) => infoText(item.match(new RegExp(`<${name}\\b[^>]*>([\\s\\S]*?)</${name}>`, "i"))?.[1], 500);
+  const items = [...xml.matchAll(/<item\b[^>]*>([\s\S]*?)<\/item>/gi)].map(match => {
+    const item = match[1];
+    return {title:get(item,"title"),link:get(item,"link"),publishedAt:infoDate(get(item,"pubDate") || get(item,"dc:date"))};
+  }).filter(item => item.title && /^https:\/\/(?:www\.|amp\.)?dw\.com\//.test(item.link) && item.publishedAt &&
+    Date.now() - Date.parse(item.publishedAt) < 48 * 60 * 60_000 && Date.parse(item.publishedAt) <= Date.now() + 5 * 60_000)
+    .sort((a,b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt)).slice(0, 5);
+  if (!items.length) throw new Error("Current world headlines unavailable");
+  return {source: "DW News", items};
+}
+
+async function fetchInformation(request) {
+  const url = new URL(request.url);
+  const name = url.pathname.slice("/api/info/".length);
+  if (!Object.hasOwn(INFO_TTL, name)) return infoResponse({ok:false,error:"Information feed not found"}, 404);
+  if (request.method === "OPTIONS") return new Response(null, {status:204,headers:{"Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"GET, HEAD, OPTIONS"}});
+  if (!["GET", "HEAD"].includes(request.method)) return infoResponse({ok:false,error:"Information feeds are read-only"}, 405);
+  const ttl = INFO_TTL[name];
+  const cacheKey = new Request(url.origin + url.pathname);
+  const edge = globalThis.caches?.default;
+  try {
+    const cached = await edge?.match(cacheKey);
+    if (cached) return request.method === "HEAD" ? new Response(null, {headers:cached.headers}) : cached;
+  } catch { /* A cache failure must not block the feed. */ }
+  const memory = infoMemory.get(name);
+  if (memory && memory.expires > Date.now()) {
+    const response = infoResponse(memory.data, 200, Math.max(1, Math.floor((memory.expires - Date.now()) / 1000)));
+    return request.method === "HEAD" ? new Response(null, {headers:response.headers}) : response;
+  }
+  try {
+    if (!infoPending.has(name)) {
+      const loader = {weather:infoWeather,sports:infoSports,markets:infoMarkets,traffic:infoTraffic,news:infoNews}[name];
+      const pending = loader().then(payload => {
+        const now = Date.now();
+        const data = {ok:true,...payload,fetchedAt:new Date(now).toISOString()};
+        infoMemory.set(name, {data,expires:now + ttl * 1000});
+        return data;
+      }).finally(() => infoPending.delete(name));
+      infoPending.set(name, pending);
+    }
+    const data = await infoPending.get(name);
+    const response = infoResponse(data, 200, ttl);
+    try {await edge?.put(cacheKey, response.clone());} catch { /* Optional caching only. */ }
+    return request.method === "HEAD" ? new Response(null, {headers:response.headers}) : response;
+  } catch {
+    return infoResponse({ok:false,source:name,error:"Information feed temporarily unavailable"}, 503);
+  }
+}
+
 const DEFAULT_DROPS = [
   {
     slot: "id-01",
@@ -473,6 +736,10 @@ async function handleMediaRoutes(request, env, pathname) {
 export default {
   async fetch(request, env) {
     try {
+      // Information feeds are read-only and never touch the radio DB or media.
+      if (new URL(request.url).pathname.startsWith("/api/info/")) {
+        return await fetchInformation(request);
+      }
       if (!env.DB) {
         return json(
           {
