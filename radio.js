@@ -2316,8 +2316,7 @@ async function loadMusicFromApi() {
         src,
         video: "",
         preset: "music",
-        adminMusicId: item.id,
-        originalFilename: item.original_filename || ""
+        adminMusicId: item.id
       };
       liveDurationSeconds[src] = duration;
       channelConfig[channel].tracks.push(track);
@@ -3493,8 +3492,8 @@ async function playAdjacentStationItem(direction = 1) {
   const nextIndex = (index + direction + program.length) % program.length;
   const item = program[nextIndex];
   const preserveOpening = FULL_RECORDING_STATION_CHANNELS.has(channel);
-  hipHopSoftStartSource =
-    channel === "hip-hop" && isDoMeTrack(item.track)
+  hipHopMusicSoftStartSource =
+    channel === "hip-hop" && item.type === "music"
       ? item.track.src
       : "";
   window.setRadioTrack(item.track);
@@ -5471,15 +5470,15 @@ setMainstreamState(
   const GENRE_TRACK_START_FADE_SECONDS =
     0.02;
 
-  // Controlled Hip Hop handoff: Do Me already has a short silent lead-in, so
-  // ease it up without muting its actual first sample.
-  const DO_ME_START_GAIN =
-    0.18;
+  // Every Hip Hop MUSIC recording gets the same natural entrance on an
+  // automatic station transition. Drops/commercials are intentionally excluded.
+  const HIP_HOP_MUSIC_START_GAIN =
+    0.08;
 
-  const DO_ME_START_FADE_SECONDS =
-    0.12;
+  const HIP_HOP_MUSIC_START_FADE_SECONDS =
+    0.30;
 
-  let hipHopSoftStartSource =
+  let hipHopMusicSoftStartSource =
     "";
 
   function getTrackEndFadeSeconds() {
@@ -5561,12 +5560,6 @@ setMainstreamState(
   }
 
 
-function isDoMeTrack(track = {}) {
-  const filename = String(track.originalFilename || "").toLowerCase();
-  const title = String(track.title || "").trim().toLowerCase();
-  return title === "do me" || filename.startsWith("do_me_by_dj_silvah");
-}
-
 function startNextTrackFadeIn() {
 
   if (
@@ -5595,19 +5588,19 @@ function startNextTrackFadeIn() {
 
   if (activeChannel === "hip-hop") {
     const source = audio?.getAttribute("src") || "";
-    const softenDoMe =
-      hipHopSoftStartSource &&
-      source === hipHopSoftStartSource &&
+    const softenHipHopMusic =
+      hipHopMusicSoftStartSource &&
+      source === hipHopMusicSoftStartSource &&
       audio.currentTime <= 0.05;
 
-    if (softenDoMe) {
-      gain.setValueAtTime(DO_ME_START_GAIN, now);
-      gain.linearRampToValueAtTime(1, now + DO_ME_START_FADE_SECONDS);
+    if (softenHipHopMusic) {
+      gain.setValueAtTime(HIP_HOP_MUSIC_START_GAIN, now);
+      gain.linearRampToValueAtTime(1, now + HIP_HOP_MUSIC_START_FADE_SECONDS);
     } else {
       gain.setValueAtTime(1, now);
     }
 
-    hipHopSoftStartSource = "";
+    hipHopMusicSoftStartSource = "";
   } else if (FULL_RECORDING_STATION_CHANNELS.has(activeChannel)) {
     gain.setValueAtTime(0, now);
     gain.linearRampToValueAtTime(1, now + GENRE_TRACK_START_FADE_SECONDS);
