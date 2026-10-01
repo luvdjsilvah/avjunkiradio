@@ -523,13 +523,20 @@ test('genre transitions wait for metadata, seeking and playable data before cons
   }
 });
 
-test('Hip Hop starts at full gain while the other genre stations retain the short opening ramp',async()=>{
+test('Hip Hop stays full gain except for the targeted Do Me soft handoff',async()=>{
   for(const channel of genreChannels) {
     const p=await genrePlayer(channel);
     await p.audio.finish();await flush();
     const ctx=p.contexts[0],gain=ctx.gains[0].gain;
+    const title=p.elements.get('player-track-title').textContent;
     if(channel==='hip-hop') {
-      assert.equal(gain.valueAt(ctx.currentTime),1,'Hip Hop must expose the first sample at full gain');
+      if(title==='Do Me') {
+        assert.equal(gain.valueAt(ctx.currentTime),0.18);
+        assert.ok(gain.valueAt(ctx.currentTime+.06)>0.18 && gain.valueAt(ctx.currentTime+.06)<1);
+        assert.equal(gain.valueAt(ctx.currentTime+.13),1);
+      } else {
+        assert.equal(gain.valueAt(ctx.currentTime),1,'Other Hip Hop recordings must keep their full opening');
+      }
     } else {
       assert.equal(gain.valueAt(ctx.currentTime),0);
       assert.ok(gain.valueAt(ctx.currentTime+.005)>0 && gain.valueAt(ctx.currentTime+.005)<1,'The opening must rise smoothly');
@@ -539,17 +546,38 @@ test('Hip Hop starts at full gain while the other genre stations retain the shor
   }
 });
 
-test('Hip Hop stays muted while loading then opens at full gain when playback actually begins',async()=>{
+test('Hip Hop waits silently while loading, then applies the selected opening level when playback begins',async()=>{
   const p=await genrePlayer('hip-hop');
   let releasePlay;p.audio.playGate=new Promise(resolve=>{releasePlay=resolve;});
   await p.audio.finish();await flush();
+  const title=p.elements.get('player-track-title').textContent;
   const ctx=p.contexts[0],gain=ctx.gains[0].gain;
   ctx.currentTime+=.5;
   assert.equal(p.api.pending,true);assert.equal(p.audio.paused,true);
   assert.equal(gain.valueAt(ctx.currentTime),0);
   releasePlay();await flush();
   assert.equal(p.audio.paused,false);assert.equal(p.audio.currentTime,0);
-  assert.equal(gain.valueAt(ctx.currentTime),1,'Hip Hop must become audible immediately at the true beginning');
+  assert.equal(gain.valueAt(ctx.currentTime),title==='Do Me'?0.18:1);
+});
+
+test('Do Me receives a short soft handoff at time zero without altering other Hip Hop recordings',async()=>{
+  const p=await genrePlayer('hip-hop');
+  const program=p.api.liveStationPrograms['hip-hop'];
+  let next;
+  for(let i=0;i<program.length;i++) {
+    const index=p.api.currentLiveProgramIndexes['hip-hop'];
+    next=program[(index+1)%program.length];
+    if(next?.track?.title==='Do Me') break;
+    await p.audio.finish();await flush();
+  }
+  assert.equal(next?.track?.title,'Do Me','Fixture must find the Do Me transition');
+  await p.audio.finish();await flush();
+  const ctx=p.contexts[0],gain=ctx.gains[0].gain;
+  assert.equal(p.elements.get('player-track-title').textContent,'Do Me');
+  assert.equal(p.audio.currentTime,0,'Do Me must still start at the true beginning');
+  assert.equal(gain.valueAt(ctx.currentTime),0.18);
+  assert.ok(gain.valueAt(ctx.currentTime+.06)>0.18 && gain.valueAt(ctx.currentTime+.06)<1);
+  assert.equal(gain.valueAt(ctx.currentTime+.13),1);
 });
 
 test('pausing a genre transition cancels a loading recording and late canplay cannot restart it',async()=>{
